@@ -1,5 +1,5 @@
 import Mathlib
-import computableR.ComputableRSeq
+import ComputableReal.ComputableRSeq
 
 /- Computableℝ carries around a real value, val:ℝ, and a
   computable sequence `seq`. seq is (essentially) a ComputableℝSeq val. But we

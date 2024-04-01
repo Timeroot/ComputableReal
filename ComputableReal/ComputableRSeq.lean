@@ -1,133 +1,5 @@
 import Mathlib
-
---============
---silly lemmas
-theorem abs_ite_le [inst : LinearOrderedAddCommGroup α] (x : α) :
-    abs x = if 0 ≤ x then x else -x := by
-  split_ifs <;> simp_all
-  next h =>
-    exact LT.lt.le h
-
-namespace Trunc
-
-/- Any constant two-argument function lifts to a function out of the truncation. -/
-def lift₂ (f : α → β → γ) (c : ∀ a b : α, ∀ c d : β, f a c = f b d) :
-    Trunc α → Trunc β → γ :=
-  Quot.lift₂ f (fun a b₁ b₂ _ ↦ c a a b₁ b₂) (fun a₁ a₂ b _ ↦ c a₁ a₂ b b)
-
-/-- A function `f : α → β → γ` defines a function `map₂ f : Trunc α → Trunc β → Trunc γ`. -/
-def map₂ (f : α → β → γ) (q : Trunc α) (r : Trunc β) : Trunc γ :=
-  lift₂ (fun a b ↦ Trunc.mk (f a b)) (fun _ _ _ _ ↦ Trunc.eq _ _) q r
-
-end Trunc
-
-namespace CauSeq
-
-variable [LinearOrderedField α] {a b : CauSeq α abs}
-
-theorem sup_equiv_of_equivs (ha : a ≈ c) (hb : b ≈ c) : a ⊔ b ≈ c := by
-  intro n hn
-  obtain ⟨i₁, hi₁⟩ := ha n hn
-  obtain ⟨i₂, hi₂⟩ := hb n hn
-  use max i₁ i₂
-  intro j hj
-  replace hi₁ := hi₁ j (Nat.max_le.mp hj).1
-  replace hi₂ := hi₂ j (Nat.max_le.mp hj).2
-  dsimp at hi₁ hi₂ ⊢
-  rw [sup_eq_max, max_def]
-  rw [abs_ite_le] at hi₁ hi₂ ⊢
-  split_ifs at hi₁ hi₂ ⊢
-  all_goals linarith
-
-theorem equiv_sup_of_equivs (ha : c ≈ a) (hb : c ≈ b) : c ≈ a ⊔ b :=
-  Setoid.symm (sup_equiv_of_equivs (Setoid.symm ha) (Setoid.symm hb))
-
-theorem inf_equiv_of_equivs (ha : a ≈ c) (hb : b ≈ c) : a ⊓ b ≈ c := by
-  --if we had a version of `neg_inf` for CauSeq this could be easily
-  --reduced to `sup_equiv_of_equivs`.
-  intro n hn
-  obtain ⟨i₁, hi₁⟩ := ha n hn
-  obtain ⟨i₂, hi₂⟩ := hb n hn
-  use max i₁ i₂
-  intro j hj
-  replace hi₁ := hi₁ j (Nat.max_le.mp hj).1
-  replace hi₂ := hi₂ j (Nat.max_le.mp hj).2
-  dsimp at hi₁ hi₂ ⊢
-  rw [inf_eq_min, min_def]
-  rw [abs_ite_le] at hi₁ hi₂ ⊢
-  split_ifs at hi₁ hi₂ ⊢
-  all_goals linarith
-
-theorem equiv_inf_of_equivs (ha : c ≈ a) (hb : c ≈ b) : c ≈ a ⊓ b :=
-  Setoid.symm (inf_equiv_of_equivs (Setoid.symm ha) (Setoid.symm hb))
-
-/-- Dropping the first n terms of a Cauchy sequence to get a new sequence. -/
-def drop (a : CauSeq α abs) (n : ℕ) : CauSeq α abs :=
-  ⟨fun k ↦ a.val (n+k), fun _ hq ↦ Exists.casesOn (cauchy₂ a hq)
-    fun i hi ↦ ⟨i,
-      fun _ hj ↦ hi _ (le_add_of_le_right hj) _ (Nat.le_add_left i n)⟩⟩
-
-/-- Dropping elements from a Cauchy sequence gives an equivalent one. -/
-theorem drop_equiv_self (a : CauSeq α abs) (n : ℕ) : a.drop n ≈ a :=
-  fun _ hq ↦ Exists.casesOn (cauchy₂ a hq)
-    fun i hi ↦ ⟨i, fun _ hj ↦ hi _ (le_add_of_le_right hj) _ hj⟩
-
-section Rat
-
--- def apply (a : CauSeq ℚ abs) (f : ℚ → ℚ) (hf : Continuous f) : CauSeq ℚ abs :=
---   ⟨f ∘ a.1, by
---     -- let x := Real.mk a
---     intro ε hε
---     rw [continuous_iff_continuousAt] at hf
---     dsimp [ContinuousAt] at hf
---     simp_rw [LinearOrderedAddCommGroup.tendsto_nhds] at hf
---     rify at hf
---     -- let ⟨i, hi⟩ := a.2 ε hε
---     -- use i
---     -- intro j hj
---     -- replace hi := hi j hj
---     -- replace hf := hf (f (a i)) ε hε
---     -- dsimp [Filter.Eventually] at hf
---     -- by_contra hg; revert hf
---     -- simp only [imp_false, not_forall]
---     -- simp only [ge_iff_le, Function.comp_apply, not_exists, not_forall, not_lt, exists_prop] at hg
---     -- -- have := nhds x
---     -- have := tendsto_zero_iff_abs_tendsto_zero
---     -- simp at hf
---     -- cases hf
---     -- δ
---     sorry
---   ⟩
-
--- theorem equiv_apply (a b : CauSeq ℚ abs) (f : ℚ → ℚ) (hf : Continuous f) (hab : a ≈ b) :
---     a.apply f hf ≈ b.apply f hf :=
---   sorry
-
-end Rat
-
-end CauSeq
-
-namespace Real
-
-/-- Every real number has some Caucy sequence converging to it. -/
-theorem exists_CauSeq (x : ℝ) : ∃(s : CauSeq ℚ abs), Real.mk s = x :=
-  let ⟨y,hy⟩ := Quot.exists_rep x.cauchy
-  ⟨y, by
-  rw [Real.mk, CauSeq.Completion.mk, Quotient.mk'', Real.ofCauchy.injEq]
-  exact hy⟩
-
-end Real
-
-namespace Continuous
-
--- lemma continuous_embed (fq : ℚ → ℚ) (fr : ℝ → ℝ) (hfr : ∀q, fq q = fr q) (hf₂ : Continuous fr) :
---     Continuous fq :=
---   sorry
-
-end Continuous
-
---end silly lemmas
---================
+import ComputableReal.aux_lemmas
 
 /-- Type class for sequences that converge to some real number from above and below. `lub` is a
   function that gives upper *and* lower bounds, bundled so it can reuse computation. `hcau`
@@ -205,7 +77,7 @@ def mk (x : ℝ) (lb : CauSeq ℚ abs) (ub : CauSeq ℚ abs) (hlb : ∀n, lb n �
   heq' := heq
   hlub n := Subtype.coe_eta _ _ ▸ (val_uniq' hlb hub heq) ▸ ⟨hlb n, hub n⟩
 
-theorem mk'_val_eq_val : (mk x v₁ v₂ h₁ h₂ h₃).val = x :=
+theorem mk_val_eq_val : (mk x v₁ v₂ h₁ h₂ h₃).val = x :=
   val_uniq (by convert h₁) (by convert h₂)
 
 @[simp]
@@ -257,22 +129,31 @@ def neg (x : ComputableℝSeq) : ComputableℝSeq :=
 def sub (x : ComputableℝSeq) (y : ComputableℝSeq) : ComputableℝSeq :=
   add x (neg y)
 
-def applyℚMono (x : ComputableℝSeq) (fq : ℚ → ℚ) (fr : ℝ → ℝ) (hfr : ∀q, fq q = fr q)
-    (hf₁ : Monotone fr) (hf₂ : Continuous fr) : ComputableℝSeq :=
-  sorry
---   mk' (x := fr x.val)
+-- def applyℚMono (x : ComputableℝSeq) (fq : ℚ → ℚ) (fr : ℝ → ℝ) (hfr : ∀q, fq q = fr q)
+--     (hf₁ : Monotone fr) (hf₂ : Continuous fr) : ComputableℝSeq :=
+--   mk (x := fr x.val)
 --   (lb := x.lb.apply fq (hf₂.continuous_embed fq hfr))
 --   (ub := x.ub.apply fq (hf₂.continuous_embed fq hfr))
---   (hlb := fun n ↦ (hfr _).symm ▸ (hf₁ (hx.hlb n)))
---   (hub := fun n ↦ (hfr _).symm ▸ (hf₁ (hx.hub n)))
---   (heq := CauSeq.equiv_apply hx.lb hx.ub fq (hf₂.continuous_embed fq hfr) x.heq)
+--   (hlb := fun n ↦ (hfr _).symm ▸ (hf₁ (x.hlb n)))
+--   (hub := fun n ↦ (hfr _).symm ▸ (hf₁ (x.hub n)))
+--   (heq := CauSeq.equiv_apply x.lb x.ub fq (hf₂.continuous_embed fq hfr) x.heq)
 
-def applyℚAnti (x : ComputableℝSeq) (fq : ℚ → ℚ) (fr : ℝ → ℝ) (hfr : ∀q, fq q = fr q)
-    (hf₁ : Antitone fr) (hf₂ : Continuous fr) : ComputableℝSeq :=
-  applyℚMono (neg x) (fq∘Neg.neg) (fr∘Neg.neg)
-    (fun q ↦ by have := hfr (-q); rwa [Rat.cast_neg] at this)
-    (hf₁.comp monotone_id.neg)
-    (hf₂.comp ContinuousNeg.continuous_neg)
+-- @[simp]
+-- theorem val_applyℚMono : (applyℚMono x fq fr h₁ h₂ h₃).val = fr x.val :=
+--   mk_val_eq_val
+
+-- def applyℚAnti (x : ComputableℝSeq) (fq : ℚ → ℚ) (fr : ℝ → ℝ) (hfr : ∀q, fq q = fr q)
+--     (hf₁ : Antitone fr) (hf₂ : Continuous fr) : ComputableℝSeq :=
+--   applyℚMono (neg x) (fq∘Neg.neg) (fr∘Neg.neg)
+--     (fun q ↦ by have := hfr (-q); rwa [Rat.cast_neg] at this)
+--     (hf₁.comp monotone_id.neg)
+--     (hf₂.comp ContinuousNeg.continuous_neg)
+
+-- @[simp]
+-- theorem val_applyℚAnti : (applyℚAnti x fq fr h₁ h₂ h₃).val = fr x.val := by
+--   rw [applyℚAnti, val_applyℚMono, neg, mk_val_eq_val]
+--   dsimp
+--   rw [neg_neg]
 
 -- --Faster one for rational multiplcation
 -- def lb_mul_q [hx : ComputableℝSeq x] : CauSeq ℚ qabs :=
@@ -426,6 +307,267 @@ def mul (x : ComputableℝSeq) (y : ComputableℝSeq) : ComputableℝSeq where
     · convert mul_lb_is_lb x y n
     · convert mul_ub_is_ub x y n
 
+instance instComputableZero : Zero ComputableℝSeq :=
+  ⟨(0 : ℕ)⟩
+
+instance instComputableOne : One ComputableℝSeq :=
+  ⟨(1 : ℕ)⟩
+
+instance instAdd : Add ComputableℝSeq :=
+  ⟨add⟩
+
+instance instNeg : Neg ComputableℝSeq :=
+  ⟨neg⟩
+
+instance instSub : Sub ComputableℝSeq :=
+  ⟨sub⟩
+
+instance instMul : Mul ComputableℝSeq :=
+  ⟨mul⟩
+
+section simps
+
+variable (x y : ComputableℝSeq)
+
+@[simp]
+theorem natCast_lb : (Nat.cast n : ComputableℝSeq).lb = n := by
+  rfl
+
+@[simp]
+theorem natCast_ub : (Nat.cast n : ComputableℝSeq).ub = n := by
+  rfl
+
+@[simp]
+theorem val_natCast : (Nat.cast n : ComputableℝSeq).val = n :=
+  val_eq_mk_lb _ ▸ natCast_lb ▸ rfl
+
+@[simp]
+theorem intCast_lb : (Int.cast z : ComputableℝSeq).lb = z := by
+  rfl
+
+@[simp]
+theorem intCast_ub : (Int.cast z : ComputableℝSeq).ub = z := by
+  rfl
+
+@[simp]
+theorem val_intCast : (Int.cast z : ComputableℝSeq).val = z :=
+  val_eq_mk_lb _ ▸ intCast_lb ▸ rfl
+
+theorem ratCast_lb : (Rat.cast q : ComputableℝSeq).lb = CauSeq.const abs q := by
+  rfl
+
+theorem ratCast_ub : (Rat.cast q : ComputableℝSeq).ub = CauSeq.const abs q := by
+  rfl
+
+@[simp]
+theorem val_ratCast : (Rat.cast q : ComputableℝSeq).val = q :=
+  val_eq_mk_lb _ ▸ ratCast_lb ▸ rfl
+
+@[simp]
+theorem zero_lb : (0 : ComputableℝSeq).lb = 0 := by
+  rfl
+
+@[simp]
+theorem zero_ub : (0 : ComputableℝSeq).ub = 0 := by
+  rfl
+
+@[simp]
+theorem zero_val : (0 : ComputableℝSeq).val = 0 :=
+  val_eq_mk_lb _ ▸ Real.mk_zero
+
+@[simp]
+theorem one_lb : (1 : ComputableℝSeq).lb = 1 := by
+  rfl
+
+@[simp]
+theorem one_ub : (1 : ComputableℝSeq).ub = 1 := by
+  rfl
+
+@[simp]
+theorem one_val : (1 : ComputableℝSeq).val = 1 :=
+  val_eq_mk_lb _ ▸ Real.mk_one
+
+@[simp]
+theorem add_eq_add : (x + y).val = x.val + y.val := by
+  convert (mk_val_eq_val : (add x y).val = x.val + y.val)
+
+@[simp]
+theorem lb_add : (x + y).lb = x.lb + y.lb :=
+  rfl
+
+@[simp]
+theorem ub_add : (x + y).ub = x.ub + y.ub :=
+  rfl
+
+@[simp]
+theorem neg_eq_neg : (-x).val = -x.val := by
+  convert (mk_val_eq_val : (neg x).val = -x.val)
+
+@[simp]
+theorem lb_neg : (-x).lb = -x.ub :=
+  rfl
+
+@[simp]
+theorem ub_neg : (-x).ub = -x.lb := by
+  rfl
+
+@[simp]
+theorem sub_eq_sub : (x - y).val = x.val - y.val := by
+  suffices (sub x y).val = x.val - y.val by
+    convert this
+  rw [sub, add, neg, mk_val_eq_val, mk_val_eq_val]
+  rfl
+
+@[simp]
+theorem lb_sub : (x - y).lb = x.lb - y.ub := by
+  suffices (sub x y).lb = x.lb - y.ub by
+    convert this
+  rw [sub, add, neg]
+  rw [mk_lb, mk_lb]
+  ring_nf!
+
+@[simp]
+theorem ub_sub : (x - y).ub = x.ub - y.lb := by
+  suffices (sub x y).ub = x.ub - y.lb by
+    convert this
+  rw [sub, add, neg]
+  rw [mk_ub, mk_ub]
+  ring_nf!
+
+@[simp]
+theorem mul_eq_mul : (x * y).val = x.val * y.val := by
+  suffices (mul x y).val = x.val * y.val by
+    convert this
+  rw [val_def]
+  exact val_uniq' (mul_lb_is_lb x y) (mul_ub_is_ub x y) (lb_ub_mul_equiv x y)
+
+theorem lb_mul : (x * y).lb = ((x.lb * y.lb) ⊓ (x.ub * y.lb)) ⊓ ((x.lb * y.ub) ⊓ (x.ub * y.ub)) := by
+  ext
+  rw [← mul_lb, ← fst_mul'_eq_mul_lb]
+  rfl
+
+theorem ub_mul : (x * y).ub = ((x.lb * y.lb) ⊔ (x.ub * y.lb)) ⊔ ((x.lb * y.ub) ⊔ (x.ub * y.ub)) := by
+  ext
+  rw [← mul_ub, ← snd_mul'_eq_mul_ub]
+  rfl
+
+end simps
+
+section semiring --proving that computable real *sequences* form a commutative semiring
+
+theorem add_comm (x y: ComputableℝSeq) : x + y = y + x := by
+  ext <;> simp only [ub_add, lb_add] <;> ring_nf
+
+theorem mul_comm (x y : ComputableℝSeq) : x * y = y * x := by
+  ext n
+  <;> simp only [lb_mul, ub_mul, mul_lb, mul_ub]
+  · repeat rw [_root_.mul_comm (lb x)]
+    repeat rw [_root_.mul_comm (ub x)]
+    dsimp
+    rw [inf_assoc, inf_assoc]
+    congr 1
+    rw [← inf_assoc, ← inf_assoc]
+    nth_rw 2 [inf_comm]
+  · repeat rw [_root_.mul_comm (lb x)]
+    repeat rw [_root_.mul_comm (ub x)]
+    dsimp
+    rw [sup_assoc, sup_assoc]
+    congr 1
+    rw [← sup_assoc, ← sup_assoc]
+    nth_rw 2 [sup_comm]
+
+-- theorem mul_assoc (x y z : ComputableℝSeq) : (x * y) * z = x * (y * z) := by
+--   sorry
+
+-- theorem left_distrib (x y z : ComputableℝSeq) : x * (y + z) = x * y + x * z := by
+--   ext n
+--   <;> simp only [lb_mul, ub_mul, mul_lb, mul_ub, lb_add, ub_add]
+--   · dsimp
+--     simp only [_root_.left_distrib, add_inf, inf_add, inf_assoc]
+--     -- congr 1
+--     repeat sorry
+--   · sorry
+
+-- theorem right_distrib (x y z : ComputableℝSeq) : (x + y) * z = x * z + y * z := by
+--   rw [mul_comm, left_distrib, mul_comm, mul_comm z y]
+
+theorem neg_mul (x y : ComputableℝSeq) : -x * y = -(x * y) := by
+  ext
+  · rw [lb_neg, lb_mul, ub_mul]
+    simp only [lb_neg, ub_neg, CauSeq.coe_inf, CauSeq.coe_mul, CauSeq.coe_neg, neg_mul,
+      Pi.inf_apply, Pi.neg_apply, Pi.mul_apply, CauSeq.neg_apply, CauSeq.coe_sup, Pi.sup_apply, neg_sup]
+    nth_rewrite 2 [inf_comm]
+    nth_rewrite 3 [inf_comm]
+    ring_nf
+  · rw [ub_neg, lb_mul, ub_mul]
+    simp only [lb_neg, ub_neg, CauSeq.coe_inf, CauSeq.coe_mul, CauSeq.coe_neg, neg_mul,
+      Pi.inf_apply, Pi.neg_apply, Pi.mul_apply, CauSeq.neg_apply, CauSeq.coe_sup, Pi.sup_apply, neg_inf]
+    nth_rewrite 2 [sup_comm]
+    nth_rewrite 3 [sup_comm]
+    ring_nf
+
+theorem mul_neg (x y : ComputableℝSeq) : x * -y = -(x * y) := by
+  rw [mul_comm, neg_mul, mul_comm]
+
+theorem neg_eq_of_add (x y : ComputableℝSeq) (h : x + y = 0) : -x = y := by
+  have hlb : ∀(x y : ComputableℝSeq), x + y = 0 → x.lb = -y.ub := by
+    intro x y h
+    ext n
+    let ⟨h₁, h₂⟩ := ext_iff.2 h n
+    simp only [lb_add, ub_add, CauSeq.add_apply, zero_lb, zero_ub, CauSeq.zero_apply, CauSeq.neg_apply] at h₁ h₂ ⊢
+    have h₃ := x.lb_le_ub n
+    have h₄ := y.lb_le_ub n
+    linarith (config := {splitNe := true})
+  ext
+  · rw [lb_neg, CauSeq.neg_apply, hlb y x (add_comm _ _ ▸ h), CauSeq.neg_apply]
+  · rw [ub_neg, CauSeq.neg_apply, hlb x y h, CauSeq.neg_apply, neg_neg]
+
+-- /-- Computable sequences have *most* of the properties of a ring, including negation, subtraction,
+--   multiplication, IntCast all working as one would expect, except for the crucial fact that a - a ≠ 0.
+--   This typeclass collects all these facts together. -/
+-- class CompSeqClass (G : Type u) extends CommSemiring G, HasDistribNeg G, SubtractionCommMonoid G, IntCast G
+
+-- instance instSeqCompSeqClass : CompSeqClass ComputableℝSeq := by
+--   refine' { natCast := fun n => n
+--             intCast := fun z => z
+--             zero := 0
+--             one := 1
+--             mul := (· * ·)
+--             add := (· + ·)
+--             neg := (- ·)
+--             sub := (· - ·)
+--             npow := @npowRec _ ⟨(1 : ℕ)⟩ ⟨(· * ·)⟩
+--             nsmul := @nsmulRec _ ⟨(0 : ℕ)⟩ ⟨(· + ·)⟩
+--             zsmul := @zsmulRec _ ⟨(0 : ℕ)⟩ ⟨(· + ·)⟩ ⟨@Neg.neg _ _⟩
+--             add_comm := add_comm --inline several of the "harder" proofs
+--             mul_comm := mul_comm
+--             mul_assoc := mul_assoc
+--             left_distrib := left_distrib
+--             right_distrib := right_distrib
+--             neg_mul := neg_mul
+--             mul_neg := mul_neg
+--             neg_eq_of_add := neg_eq_of_add
+--             , .. }
+--   all_goals
+--     intros
+--     first
+--     | rfl
+--     | ext
+--       all_goals
+--         try simp only [natCast_ub, natCast_lb, Nat.cast_add, Nat.cast_one, CauSeq.add_apply, CauSeq.one_apply,
+--            CauSeq.zero_apply, CauSeq.neg_apply, lb_add, ub_add, one_ub, one_lb, zero_ub, zero_lb, ub_neg,
+--            lb_neg, neg_add_rev, neg_neg, zero_add, add_zero]
+--         try ring_nf
+--         try rfl
+--         try {
+--           rename_i a n
+--           simp only [lb_mul, ub_mul, zero_lb, zero_ub, mul_zero, zero_mul, one_lb, one_ub, mul_one, one_mul,
+--             CauSeq.inf_idem, CauSeq.sup_idem, CauSeq.zero_apply, CauSeq.coe_inf, CauSeq.coe_sup,
+--             Pi.sup_apply, Pi.inf_apply, sup_eq_right, inf_eq_left, lb_le_ub a n]
+--        }
+
+end semiring
+
 section signs
 
 private noncomputable instance is_pos'_aux_sound (x : ℝ) :
@@ -516,11 +658,11 @@ irreducible_def sign_witness (x : ComputableℝSeq) (hnz : x.val ≠ 0) :
       exact x.sign_witness_term_prop k hnz hub hlb
 
 /-- With the proof that x≠0, we get a total comparison function. -/
-def is_pos (x : ComputableℝSeq) (hnz : x.val ≠ 0) : Bool :=
+def is_pos {x : ComputableℝSeq} (hnz : x.val ≠ 0) : Bool :=
   0 < x.lb (x.sign_witness hnz)
 
 /-- Proof that `is_pos` correctly determines whether a nonzero computable number is positive. -/
-theorem is_pos_iff (x : ComputableℝSeq) (hnz : x.val ≠ 0) : is_pos x hnz ↔ 0 < x.val := by
+theorem is_pos_iff (x : ComputableℝSeq) (hnz : x.val ≠ 0) : is_pos hnz ↔ 0 < x.val := by
   have hsw := (x.sign_witness hnz).property
   have hls := x.hlb (x.sign_witness hnz)
   have hus := x.hub (x.sign_witness hnz)
@@ -536,6 +678,10 @@ theorem is_pos_iff (x : ComputableℝSeq) (hnz : x.val ≠ 0) : is_pos x hnz ↔
     rw [is_pos, decide_eq_true_eq]
     tauto
 
+theorem neg_of_not_pos {x : ComputableℝSeq} {hnz : x.val ≠ 0} (h : ¬is_pos hnz) : x.val < 0 := by
+  rw [is_pos_iff] at h
+  linarith (config := {splitNe := true})
+
 /- Given computable sequences for a nonzero x, drop the leading terms of both sequences
 (lb and ub) until both are nonzero. This gives a new sequence that we can "safely" invert.
 -/
@@ -549,12 +695,7 @@ def dropTilSigned (x : ComputableℝSeq) (hnz : x.val ≠ 0) : ComputableℝSeq 
       Setoid.trans (x.lb.drop_equiv_self start) x.heq)
       (Setoid.symm (x.ub.drop_equiv_self start)))
 
-theorem sign_dropTilSigned {x : ComputableℝSeq} (hnz : x.val ≠ 0) :
-    (0 < x.val ∧ 0 < (x.dropTilSigned hnz).lb 0) ∨ (x.val < 0 ∧ (x.dropTilSigned hnz).ub 0 < 0) := by
-  have := (x.sign_witness hnz).prop
-  have := lt_trichotomy x.val 0
-  tauto
-
+@[simp]
 theorem val_dropTilSigned {x : ComputableℝSeq} (h : x.val ≠ 0) : (x.dropTilSigned h).val = x.val := by
   rw [val, val, Real.mk_eq]
   apply (lb x).drop_equiv_self
@@ -562,43 +703,108 @@ theorem val_dropTilSigned {x : ComputableℝSeq} (h : x.val ≠ 0) : (x.dropTilS
 theorem dropTilSigned_nz {x : ComputableℝSeq} (h : x.val ≠ 0) : (x.dropTilSigned h).val ≠ 0 :=
   val_dropTilSigned h ▸ h
 
+theorem sign_dropTilSigned {x : ComputableℝSeq} (hnz : x.val ≠ 0) :
+    (0 < x.val ∧ 0 < (x.dropTilSigned hnz).lb 0) ∨ (x.val < 0 ∧ (x.dropTilSigned hnz).ub 0 < 0) := by
+  have := (x.sign_witness hnz).prop
+  have := lt_trichotomy x.val 0
+  tauto
+
+theorem dropTilSigned_pos {x : ComputableℝSeq} (h : x.val ≠ 0) :
+    x.val > 0 ↔ (x.dropTilSigned h).lb 0 > 0 :=
+  ⟨fun h' ↦ (Or.resolve_right (sign_dropTilSigned h)
+    (not_and.mpr fun a _ => ( not_lt_of_gt h') a)).2,
+   fun h' ↦ calc val x = _ := (val_dropTilSigned h).symm
+        _ ≥ _ := (x.dropTilSigned h).hlb 0
+        _ > 0 := Rat.cast_pos.2 h'⟩
+
+theorem dropTilSigned_neg {x : ComputableℝSeq} (h : x.val ≠ 0) :
+    x.val < 0 ↔ (x.dropTilSigned h).ub 0 < 0 :=
+  ⟨fun h' ↦ (Or.resolve_left (sign_dropTilSigned h)
+    (not_and.mpr fun a _ => ( not_lt_of_gt h') a)).2,
+   fun h' ↦ calc val x = _ := (val_dropTilSigned h).symm
+        _ ≤ _ := (x.dropTilSigned h).hub 0
+        _ < 0 := Rat.cast_lt_zero.2 h'⟩
+
+
 end signs
 
 section inv
+
+theorem neg_LimZero_lb_of_val {x : ComputableℝSeq} (hnz : x.val ≠ 0) : ¬x.lb.LimZero := by
+  rw [← CauSeq.Completion.mk_eq_zero]
+  rw [val_eq_mk_lb, ←Real.mk_zero, ne_eq, Real.ofCauchy.injEq] at hnz
+  exact hnz
+
+theorem neg_LimZero_ub_of_val {x : ComputableℝSeq} (hnz : x.val ≠ 0) : ¬x.ub.LimZero := by
+  rw [← CauSeq.Completion.mk_eq_zero]
+  rw [val_eq_mk_ub, ←Real.mk_zero, ne_eq, Real.ofCauchy.injEq] at hnz
+  exact hnz
+
+theorem pos_ub_of_val {x : ComputableℝSeq} (hp : x.val > 0) : x.ub.Pos :=
+  Real.mk_pos.1 (val_eq_mk_ub _ ▸ hp)
+
+theorem pos_neg_ub_of_val {x : ComputableℝSeq} (hn : x.val < 0) : (-x.ub).Pos :=
+  Real.mk_pos.1 (lb_neg _ ▸ val_eq_mk_lb _ ▸ neg_eq_neg _ ▸ Left.neg_pos_iff.mpr hn)
+
+theorem pos_lb_of_val {x : ComputableℝSeq} (hp : x.val > 0) : x.lb.Pos :=
+  Real.mk_pos.1 (val_eq_mk_lb _ ▸ hp)
+
+theorem pos_neg_lb_of_val {x : ComputableℝSeq} (hn : x.val < 0) : (-x.lb).Pos :=
+  Real.mk_pos.1 (ub_neg _ ▸ val_eq_mk_ub _ ▸ neg_eq_neg _ ▸ Left.neg_pos_iff.mpr hn)
 
 -- CauSeq.lim_inv !!
 /-- The sequence of lower bounds of 1/x. Only functions "correctly" to give lower bounds if we
    assume that hx is already `hx.dropTilSigned` (as proven in `lb_inv_correct`) -- but those
    assumptions aren't need for proving that it's Cauchy. -/
 def lb_inv (x : ComputableℝSeq) (hnz : x.val ≠ 0) : CauSeq ℚ abs :=
-  if x.is_pos hnz then
-    ⟨fun n ↦ (x.ub n)⁻¹, --x is positive so 1/(upper bound) is always a good lower bound.
-      sorry⟩
-  else
-    --x is negative, so positive values for ub don't give us any info.
+  if hp : is_pos hnz then --if x is positive, then reciprocals of ub's are always good lb's.
+    x.ub.inv (neg_LimZero_ub_of_val hnz)
+  else --x is negative, so positive values for ub don't give us any good lb's.
     let ub0 := x.ub 0 --save this first value, it acts as fallback if we get a bad ub
     ⟨fun n ↦
       let ub := x.ub n
-      if ub > 0 then
+      if ub ≥ 0 then
         ub0⁻¹ --sign is indeterminate, fall back to the starting values
       else
-        ub⁻¹,
-      sorry⟩
+        ub⁻¹, fun _ hε ↦
+          have hxv : x.val < 0 := by rw [is_pos_iff] at hp; linarith (config:={splitNe:=true})
+          let ⟨_, q0, Hq⟩ := pos_neg_ub_of_val hxv
+          let ⟨_, K0, HK⟩ := CauSeq.abv_pos_of_not_limZero (neg_LimZero_ub_of_val hnz)
+          let ⟨_, δ0, Hδ⟩ := rat_inv_continuous_lemma abs hε K0
+          let ⟨i, H⟩ := exists_forall_ge_and (exists_forall_ge_and HK (x.ub.cauchy₃ δ0)) Hq
+          let ⟨⟨iK, H'⟩, _⟩ := H _ le_rfl
+          ⟨i, fun j hj ↦
+            have h₁ := CauSeq.neg_apply x.ub _ ▸ H _ le_rfl
+            have h₁ := CauSeq.neg_apply x.ub _ ▸ H _ hj
+            by
+              simp only [(by linarith : ¬x.ub i ≥ 0),(by linarith : ¬x.ub j ≥ 0), ite_false]
+              exact Hδ (H _ hj).1.1 iK (H' _ hj)⟩⟩
 
-/-- Analgoous to `lb_inv` for provides upper bounds on 1/x. -/
+/-- Analgoous to `lb_inv` for providing upper bounds on 1/x. -/
 def ub_inv (x : ComputableℝSeq) (hnz : x.val ≠ 0) : CauSeq ℚ abs :=
-  if x.is_pos hnz then
-    let lb0 := x.lb 0 --save this first value, it acts as fallback if we get a bad lb
+  if hp : ¬is_pos hnz then --if x is positive, then reciprocals of ub's are always good lb's.
+    x.lb.inv (neg_LimZero_lb_of_val hnz)
+  else --x is negative, so positive values for ub don't give us any good lb's.
+    let lb0 := x.lb 0 --save this first value, it acts as fallback if we get a bad ub
     ⟨fun n ↦
       let lb := x.lb n
-      if lb > 0 then
+      if lb ≤ 0 then
         lb0⁻¹ --sign is indeterminate, fall back to the starting values
       else
-        lb⁻¹,
-      sorry⟩
-  else
-    ⟨fun n ↦ (x.lb n)⁻¹,
-      sorry⟩
+        lb⁻¹, fun _ hε ↦
+          have hxv : x.val > 0 := by rw [is_pos_iff, not_not] at hp; linarith (config:={splitNe:=true})
+          let ⟨_, q0, Hq⟩ := pos_lb_of_val hxv
+          let ⟨_, K0, HK⟩ := CauSeq.abv_pos_of_not_limZero (neg_LimZero_lb_of_val hnz)
+          let ⟨_, δ0, Hδ⟩ := rat_inv_continuous_lemma abs hε K0
+          let ⟨i, H⟩ := exists_forall_ge_and (exists_forall_ge_and HK (x.lb.cauchy₃ δ0)) Hq
+          let ⟨⟨iK, H'⟩, _⟩ := H _ le_rfl
+          ⟨i, fun j hj ↦
+            have h₁ := H _ le_rfl
+            have h₁ := H _ hj
+            by
+              simp only [(by linarith : ¬x.lb i ≤ 0),(by linarith : ¬x.lb j ≤ 0), ite_false]
+              exact Hδ (H j hj).1.1 iK (H' j hj)
+              ⟩⟩
 
 -- /-- ub_inv applied to the negative of x is the negative of lb_inv. -/
 -- theorem ub_inv_neg (x : ComputableℝSeq) (hnz : x.val ≠ 0) : x.ub_inv hnz = -(
@@ -606,26 +812,88 @@ def ub_inv (x : ComputableℝSeq) (hnz : x.val ≠ 0) : CauSeq ℚ abs :=
 --   sorry
 
 /-- When applied to a `dropTilSigned`, `lb_inv` is a correct lower bound on x⁻¹. -/
-theorem lb_inv_correct (x : ComputableℝSeq) (hnz : x.val ≠ 0) : ∀n,
-    (x.dropTilSigned hnz).lb_inv (dropTilSigned_nz hnz) n ≤ x.val⁻¹ :=
-  sorry
-
-/-- When applied to a `dropTilSigned`, `lb_inv` is converges to x⁻¹.
-TODO: version without hnz hypothesis. -/
-theorem lb_inv_converges (x : ComputableℝSeq) (hnz : x.val ≠ 0) :
-    Real.mk ((x.dropTilSigned hnz).lb_inv (dropTilSigned_nz hnz)) = x.val⁻¹ :=
-  sorry
+theorem lb_inv_correct {x : ComputableℝSeq} (hnz : x.val ≠ 0) : ∀n,
+    (x.dropTilSigned hnz).lb_inv (dropTilSigned_nz hnz) n ≤ x.val⁻¹ := by
+  intro n
+  rw [lb_inv]
+  split_ifs with hp
+  · simp only [CauSeq.inv_apply, Rat.cast_inv]
+    rw [is_pos_iff, val_dropTilSigned] at hp
+    apply inv_le_inv_of_le hp
+    apply hub
+  · have hv : val x < 0 := by rw [is_pos_iff, val_dropTilSigned] at hp; linarith (config:={splitNe:=true})
+    dsimp
+    split_ifs with h
+    <;> simp only [Rat.cast_inv]
+    <;> apply (inv_le_inv_of_neg ?_ hv).2 (hub x _)
+    · exact_mod_cast (dropTilSigned_neg hnz).1 hv
+    · exact_mod_cast not_le.1 h
 
 /-- When applied to a `dropTilSigned`, `ub_inv` is a correct upper bound on x⁻¹. -/
-theorem ub_inv_correct (x : ComputableℝSeq) (hnz : x.val ≠ 0) : ∀n,
-    (x.dropTilSigned hnz).ub_inv (dropTilSigned_nz hnz) n ≥ x.val⁻¹ :=
-  sorry
+theorem ub_inv_correct {x : ComputableℝSeq} (hnz : x.val ≠ 0) : ∀n,
+    (x.dropTilSigned hnz).ub_inv (dropTilSigned_nz hnz) n ≥ x.val⁻¹ := by
+  intro n
+  rw [ub_inv]
+  split_ifs with hp
+  · have hv : val x > 0 := by rw [is_pos_iff, val_dropTilSigned] at hp; linarith (config:={splitNe:=true})
+    dsimp
+    split_ifs with h
+    <;> simp only [Rat.cast_inv]
+    <;> apply inv_le_inv_of_le ?_ ((val_dropTilSigned hnz) ▸ hlb _ _)
+    · exact_mod_cast (dropTilSigned_pos hnz).1 hv
+    · exact_mod_cast not_le.1 h
+  · simp only [CauSeq.inv_apply, Rat.cast_inv]
+    replace hp := val_dropTilSigned _ ▸ neg_of_not_pos hp
+    rw [ge_iff_le, inv_le_inv_of_neg]
+    · exact ((val_dropTilSigned hnz) ▸ hlb _ _)
+    · exact hp
+    · calc _ ≤ _ := ((val_dropTilSigned hnz) ▸ hlb _ _)
+      _ < _ := hp
+
+/-- `x.lb_inv` converges to `(x.val)⁻¹`. -/
+theorem lb_inv_converges {x : ComputableℝSeq} (hnz : x.val ≠ 0) :
+    Real.mk (x.lb_inv hnz) = x.val⁻¹ := by
+  apply Real.ext_cauchy
+  rw [Real.cauchy_inv, Real.cauchy, Real.cauchy, Real.mk, val_eq_mk_ub, Real.mk,
+    CauSeq.Completion.inv_mk (neg_LimZero_ub_of_val hnz), CauSeq.Completion.mk_eq, lb_inv]
+  split_ifs with h
+  · rfl
+  · exact fun _ hε ↦
+      have hxv : x.val < 0 := by
+        rw [is_pos_iff] at h
+        linarith (config := {splitNe := true})
+      let ⟨q, q0, ⟨i, H⟩⟩ := pos_neg_ub_of_val hxv
+      ⟨i, fun j hj ↦
+        have : ¬x.ub j ≥ 0 := by linarith [CauSeq.neg_apply x.ub _ ▸ H _ hj]
+        by simp [this, hε]⟩
+
+/-- When applied to a `dropTilSigned`, `lb_inv` is converges to x⁻¹. -/
+theorem lb_inv_signed_converges {x : ComputableℝSeq} (hnz : x.val ≠ 0) :
+    Real.mk ((x.dropTilSigned hnz).lb_inv (dropTilSigned_nz hnz)) = x.val⁻¹ := by
+  simp [lb_inv_converges (dropTilSigned_nz hnz)]
+
+/-- `x.ub_inv` converges to `(x.val)⁻¹`. -/
+theorem ub_inv_converges {x : ComputableℝSeq} (hnz : x.val ≠ 0) :
+    Real.mk (x.ub_inv hnz) = x.val⁻¹ := by
+  apply Real.ext_cauchy
+  rw [Real.cauchy_inv, Real.cauchy, Real.cauchy, Real.mk, val_eq_mk_lb, Real.mk,
+    CauSeq.Completion.inv_mk (neg_LimZero_lb_of_val hnz), CauSeq.Completion.mk_eq, ub_inv]
+  split_ifs with h
+  · exact fun _ hε ↦
+      have hxv : x.val > 0 := by
+        rw [is_pos_iff] at h
+        linarith (config := {splitNe := true})
+      let ⟨q, q0, ⟨i, H⟩⟩ := pos_lb_of_val hxv
+      ⟨i, fun j hj ↦
+        have : ¬x.lb j ≤ 0 := by linarith [H _ hj]
+        by simp [this, hε]⟩
+  · rfl
 
 /-- When applied to a `dropTilSigned`, `ub_inv` is converges to x⁻¹.
 TODO: version without hnz hypothesis. -/
-theorem ub_inv_converges (x : ComputableℝSeq) (hnz : x.val ≠ 0) :
-    Real.mk ((x.dropTilSigned hnz).ub_inv (dropTilSigned_nz hnz)) = x.val⁻¹ :=
-  sorry
+theorem ub_inv_signed_converges {x : ComputableℝSeq} (hnz : x.val ≠ 0) :
+    Real.mk ((x.dropTilSigned hnz).ub_inv (dropTilSigned_nz hnz)) = x.val⁻¹ := by
+  simp [ub_inv_converges (dropTilSigned_nz hnz)]
 
 /- An inverse is defined only on reals that we can prove are nonzero. If we can prove they are
  nonzero, then we can prove that at some point we learn the sign, and so can start giving actual
@@ -635,272 +903,11 @@ def inv (x : ComputableℝSeq) (hnz : x.val ≠ 0) : ComputableℝSeq :=
   let hnz' := val_dropTilSigned hnz ▸ hnz
   mk (lb := signed.lb_inv hnz')
   (ub := signed.ub_inv hnz')
-  (hlb := x.lb_inv_correct hnz)
-  (hub := x.ub_inv_correct hnz)
-  (heq := Real.mk_eq.1 ((x.lb_inv_converges hnz).trans (x.ub_inv_converges hnz).symm))
+  (hlb := lb_inv_correct hnz)
+  (hub := ub_inv_correct hnz)
+  (heq := Real.mk_eq.1 ((lb_inv_signed_converges hnz).trans (ub_inv_signed_converges hnz).symm))
 
 end inv
-
-instance instComputableZero : Zero ComputableℝSeq :=
-  ⟨(0 : ℕ)⟩
-
-instance instComputableOne : One ComputableℝSeq :=
-  ⟨(1 : ℕ)⟩
-
-instance instAdd : Add ComputableℝSeq :=
-  ⟨add⟩
-
-instance instNeg : Neg ComputableℝSeq :=
-  ⟨neg⟩
-
-instance instSub : Sub ComputableℝSeq :=
-  ⟨sub⟩
-
-instance instMul : Mul ComputableℝSeq :=
-  ⟨mul⟩
-
-section simps
-
-variable (x y : ComputableℝSeq)
-
-@[simp]
-theorem natCast_lb : (Nat.cast n : ComputableℝSeq).lb = n := by
-  rfl
-
-@[simp]
-theorem natCast_ub : (Nat.cast n : ComputableℝSeq).ub = n := by
-  rfl
-
-@[simp]
-theorem val_natCast : (Nat.cast n : ComputableℝSeq).val = n :=
-  val_eq_mk_lb _ ▸ natCast_lb ▸ rfl
-
-@[simp]
-theorem intCast_lb : (Int.cast z : ComputableℝSeq).lb = z := by
-  rfl
-
-@[simp]
-theorem intCast_ub : (Int.cast z : ComputableℝSeq).ub = z := by
-  rfl
-
-@[simp]
-theorem val_intCast : (Int.cast z : ComputableℝSeq).val = z :=
-  val_eq_mk_lb _ ▸ intCast_lb ▸ rfl
-
-theorem ratCast_lb : (Rat.cast q : ComputableℝSeq).lb = CauSeq.const abs q := by
-  rfl
-
-theorem ratCast_ub : (Rat.cast q : ComputableℝSeq).ub = CauSeq.const abs q := by
-  rfl
-
-@[simp]
-theorem val_ratCast : (Rat.cast q : ComputableℝSeq).val = q :=
-  val_eq_mk_lb _ ▸ ratCast_lb ▸ rfl
-
-@[simp]
-theorem zero_lb : (0 : ComputableℝSeq).lb = 0 := by
-  rfl
-
-@[simp]
-theorem zero_ub : (0 : ComputableℝSeq).ub = 0 := by
-  rfl
-
-@[simp]
-theorem zero_val : (0 : ComputableℝSeq).val = 0 :=
-  val_eq_mk_lb _ ▸ Real.mk_zero
-
-@[simp]
-theorem one_lb : (1 : ComputableℝSeq).lb = 1 := by
-  rfl
-
-@[simp]
-theorem one_ub : (1 : ComputableℝSeq).ub = 1 := by
-  rfl
-
-@[simp]
-theorem one_val : (1 : ComputableℝSeq).val = 1 :=
-  val_eq_mk_lb _ ▸ Real.mk_one
-
-@[simp]
-theorem add_eq_add : (x + y).val = x.val + y.val := by
-  convert (mk'_val_eq_val : (add x y).val = x.val + y.val)
-
-@[simp]
-theorem lb_add : (x + y).lb = x.lb + y.lb :=
-  rfl
-
-@[simp]
-theorem ub_add : (x + y).ub = x.ub + y.ub :=
-  rfl
-
-@[simp]
-theorem neg_eq_neg : (-x).val = -x.val := by
-  convert (mk'_val_eq_val : (neg x).val = -x.val)
-
-@[simp]
-theorem lb_neg : (-x).lb = -x.ub :=
-  rfl
-
-@[simp]
-theorem ub_neg : (-x).ub = -x.lb := by
-  rfl
-
-@[simp]
-theorem sub_eq_sub : (x - y).val = x.val - y.val := by
-  suffices (sub x y).val = x.val - y.val by
-    convert this
-  rw [sub, add, neg, mk'_val_eq_val, mk'_val_eq_val]
-  rfl
-
-@[simp]
-theorem lb_sub : (x - y).lb = x.lb - y.ub := by
-  suffices (sub x y).lb = x.lb - y.ub by
-    convert this
-  rw [sub, add, neg]
-  rw [mk_lb, mk_lb]
-  ring_nf!
-
-@[simp]
-theorem ub_sub : (x - y).ub = x.ub - y.lb := by
-  suffices (sub x y).ub = x.ub - y.lb by
-    convert this
-  rw [sub, add, neg]
-  rw [mk_ub, mk_ub]
-  ring_nf!
-
-@[simp]
-theorem mul_eq_mul : (x * y).val = x.val * y.val := by
-  suffices (mul x y).val = x.val * y.val by
-    convert this
-  rw [val_def]
-  exact val_uniq' (mul_lb_is_lb x y) (mul_ub_is_ub x y) (lb_ub_mul_equiv x y)
-
-theorem lb_mul : (x * y).lb = ((x.lb * y.lb) ⊓ (x.ub * y.lb)) ⊓ ((x.lb * y.ub) ⊓ (x.ub * y.ub)) := by
-  ext
-  rw [← mul_lb, ← fst_mul'_eq_mul_lb]
-  rfl
-
-theorem ub_mul : (x * y).ub = ((x.lb * y.lb) ⊔ (x.ub * y.lb)) ⊔ ((x.lb * y.ub) ⊔ (x.ub * y.ub)) := by
-  ext
-  rw [← mul_ub, ← snd_mul'_eq_mul_ub]
-  rfl
-
-end simps
-
-section semiring --proving that computable real *sequences* form a commutative semiring
-
-theorem add_comm (x y: ComputableℝSeq) : x + y = y + x := by
-  ext <;> simp only [ub_add, lb_add] <;> ring_nf
-
-theorem mul_comm (x y : ComputableℝSeq) : x * y = y * x := by
-  ext n
-  <;> simp only [lb_mul, ub_mul, mul_lb, mul_ub]
-  · repeat rw [_root_.mul_comm (lb x)]
-    repeat rw [_root_.mul_comm (ub x)]
-    dsimp
-    rw [inf_assoc, inf_assoc]
-    congr 1
-    rw [← inf_assoc, ← inf_assoc]
-    nth_rw 2 [inf_comm]
-  · repeat rw [_root_.mul_comm (lb x)]
-    repeat rw [_root_.mul_comm (ub x)]
-    dsimp
-    rw [sup_assoc, sup_assoc]
-    congr 1
-    rw [← sup_assoc, ← sup_assoc]
-    nth_rw 2 [sup_comm]
-
-theorem mul_assoc (x y z : ComputableℝSeq) : (x * y) * z = x * (y * z) := by
-  sorry
-
-theorem left_distrib (x y z : ComputableℝSeq) : x * (y + z) = x * y + x * z := by
-  ext n
-  <;> simp only [lb_mul, ub_mul, mul_lb, mul_ub, lb_add, ub_add]
-  · dsimp
-    simp only [_root_.left_distrib, add_inf, inf_add, inf_assoc]
-    -- congr 1
-    repeat sorry
-  · sorry
-
-theorem right_distrib (x y z : ComputableℝSeq) : (x + y) * z = x * z + y * z := by
-  rw [mul_comm, left_distrib, mul_comm, mul_comm z y]
-
-theorem neg_mul (x y : ComputableℝSeq) : -x * y = -(x * y) := by
-  ext
-  · rw [lb_neg, lb_mul, ub_mul]
-    simp only [lb_neg, ub_neg, CauSeq.coe_inf, CauSeq.coe_mul, CauSeq.coe_neg, neg_mul,
-      Pi.inf_apply, Pi.neg_apply, Pi.mul_apply, CauSeq.neg_apply, CauSeq.coe_sup, Pi.sup_apply, neg_sup]
-    nth_rewrite 2 [inf_comm]
-    nth_rewrite 3 [inf_comm]
-    ring_nf
-  · rw [ub_neg, lb_mul, ub_mul]
-    simp only [lb_neg, ub_neg, CauSeq.coe_inf, CauSeq.coe_mul, CauSeq.coe_neg, neg_mul,
-      Pi.inf_apply, Pi.neg_apply, Pi.mul_apply, CauSeq.neg_apply, CauSeq.coe_sup, Pi.sup_apply, neg_inf]
-    nth_rewrite 2 [sup_comm]
-    nth_rewrite 3 [sup_comm]
-    ring_nf
-
-theorem mul_neg (x y : ComputableℝSeq) : x * -y = -(x * y) := by
-  rw [mul_comm, neg_mul, mul_comm]
-
-theorem neg_eq_of_add (x y : ComputableℝSeq) (h : x + y = 0) : -x = y := by
-  have hlb : ∀(x y : ComputableℝSeq), x + y = 0 → x.lb = -y.ub := by
-    intro x y h
-    ext n
-    let ⟨h₁, h₂⟩ := ext_iff.2 h n
-    simp only [lb_add, ub_add, CauSeq.add_apply, zero_lb, zero_ub, CauSeq.zero_apply, CauSeq.neg_apply] at h₁ h₂ ⊢
-    have h₃ := x.lb_le_ub n
-    have h₄ := y.lb_le_ub n
-    linarith (config := {splitNe := true})
-  ext
-  · rw [lb_neg, CauSeq.neg_apply, hlb y x (add_comm _ _ ▸ h), CauSeq.neg_apply]
-  · rw [ub_neg, CauSeq.neg_apply, hlb x y h, CauSeq.neg_apply, neg_neg]
-
-/-- Computable sequences have *most* of the properties of a ring, including negation, subtraction,
-  multiplication, IntCast all working as one would expect, except for the crucial fact that a - a ≠ 0.
-  This typeclass collects all these facts together. -/
-class CompSeqClass (G : Type u) extends CommSemiring G, HasDistribNeg G, SubtractionCommMonoid G, IntCast G
-
-instance instSeqCompSeqClass : CompSeqClass ComputableℝSeq := by
-  refine' { natCast := fun n => n
-            intCast := fun z => z
-            zero := 0
-            one := 1
-            mul := (· * ·)
-            add := (· + ·)
-            neg := (- ·)
-            sub := (· - ·)
-            npow := @npowRec _ ⟨(1 : ℕ)⟩ ⟨(· * ·)⟩
-            nsmul := @nsmulRec _ ⟨(0 : ℕ)⟩ ⟨(· + ·)⟩
-            zsmul := @zsmulRec _ ⟨(0 : ℕ)⟩ ⟨(· + ·)⟩ ⟨@Neg.neg _ _⟩
-            add_comm := add_comm --inline several of the "harder" proofs
-            mul_comm := mul_comm
-            mul_assoc := mul_assoc
-            left_distrib := left_distrib
-            right_distrib := right_distrib
-            neg_mul := neg_mul
-            mul_neg := mul_neg
-            neg_eq_of_add := neg_eq_of_add
-            , .. }
-  all_goals
-    intros
-    first
-    | rfl
-    | ext
-      all_goals
-        try simp only [natCast_ub, natCast_lb, Nat.cast_add, Nat.cast_one, CauSeq.add_apply, CauSeq.one_apply,
-           CauSeq.zero_apply, CauSeq.neg_apply, lb_add, ub_add, one_ub, one_lb, zero_ub, zero_lb, ub_neg,
-           lb_neg, neg_add_rev, neg_neg, zero_add, add_zero]
-        try ring_nf
-        try rfl
-        try {
-          rename_i a n
-          simp only [lb_mul, ub_mul, zero_lb, zero_ub, mul_zero, zero_mul, one_lb, one_ub, mul_one, one_mul,
-            CauSeq.inf_idem, CauSeq.sup_idem, CauSeq.zero_apply, CauSeq.coe_inf, CauSeq.coe_sup,
-            Pi.sup_apply, Pi.inf_apply, sup_eq_right, inf_eq_left, lb_le_ub a n]
-        }
-
-end semiring
 
 /-- The equivalence relation on ComputableℝSeq's given by converging to the same real value. -/
 instance equiv : Setoid (ComputableℝSeq) :=
