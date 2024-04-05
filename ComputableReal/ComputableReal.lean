@@ -85,16 +85,16 @@ theorem val_map₂ℝ_eq_val : (@map₂ℝ f f₂ h x y).val = f₂ x.val y.val 
   apply h
 
 instance instComputableAdd : Add Computableℝ :=
-  ⟨map₂ℝ (· + ·) ComputableℝSeq.add_eq_add⟩
+  ⟨map₂ℝ (· + ·) ComputableℝSeq.val_add⟩
 
 instance instComputableMul : Mul Computableℝ :=
-  ⟨map₂ℝ (· * ·) ComputableℝSeq.mul_eq_mul⟩
+  ⟨map₂ℝ (· * ·) ComputableℝSeq.val_mul⟩
 
 instance instComputableNeg : Neg Computableℝ :=
-  ⟨mapℝ (- ·) ComputableℝSeq.neg_eq_neg⟩
+  ⟨mapℝ (- ·) ComputableℝSeq.val_neg⟩
 
 instance instComputableSub : Sub Computableℝ :=
-  ⟨map₂ℝ (· - ·) ComputableℝSeq.sub_eq_sub⟩
+  ⟨map₂ℝ (· - ·) ComputableℝSeq.val_sub⟩
 
 instance instComputableZero : Zero Computableℝ :=
   ⟨mk 0⟩
@@ -105,34 +105,42 @@ instance instComputableOne : One Computableℝ :=
 variable (x y : Computableℝ)
 
 @[simp]
-theorem add_val : (x + y).val = x.val + y.val :=
+theorem val_add : (x + y).val = x.val + y.val :=
   val_map₂ℝ_eq_val
 
 @[simp]
-theorem mul_val : (x * y).val = x.val * y.val :=
+theorem val_mul : (x * y).val = x.val * y.val :=
   val_map₂ℝ_eq_val
 
 @[simp]
-theorem neg_val : (-x).val = -(x.val) :=
+theorem val_neg : (-x).val = -(x.val) :=
   val_mapℝ_eq_val
 
 @[simp]
-theorem sub_val : (x - y).val = x.val - y.val :=
+theorem val_sub : (x - y).val = x.val - y.val :=
   val_map₂ℝ_eq_val
 
 @[simp]
-theorem sub_mk (x' y' : ComputableℝSeq) : mk x' - mk y' = mk (x' - y') :=
-  rfl
-
-@[simp]
-theorem zero_val : (0 : Computableℝ).val = 0 := by
+theorem val_zero : (0 : Computableℝ).val = 0 := by
   rw [Zero.toOfNat0, instComputableZero]
-  simp only [val_mk_eq_val, ComputableℝSeq.zero_val]
+  simp only [val_mk_eq_val, ComputableℝSeq.val_zero]
 
  @[simp]
-theorem one_val : (1 : Computableℝ).val = 1 := by
+theorem val_one : (1 : Computableℝ).val = 1 := by
   rw [One.toOfNat1, instComputableOne]
-  simp only [val_mk_eq_val, ComputableℝSeq.one_val]
+  simp only [val_mk_eq_val, ComputableℝSeq.val_one]
+
+theorem add_mk (x y : ComputableℝSeq) : mk x + mk y = mk (x + y) :=
+  rfl
+
+theorem mul_mk (x y : ComputableℝSeq) : mk x * mk y = mk (x * y) :=
+  rfl
+
+theorem sub_mk (x y : ComputableℝSeq) : mk x - mk y = mk (x - y) :=
+  rfl
+
+theorem neg_mk (x : ComputableℝSeq) : -mk x = mk (-x) :=
+  rfl
 
 instance instCommRing : CommRing Computableℝ := by
   refine' { natCast := fun n => mk n
@@ -162,10 +170,10 @@ private def nz_quot_equiv := Equiv.subtypeQuotientEquivQuotientSubtype
     (fun x : Computableℝ ↦ x ≠ 0)
     (fun _ ↦ ⟨
       fun h h₂ ↦ by
-        rw [← eq_iff_eq_val, zero_val] at h₂
+        rw [← eq_iff_eq_val, val_zero] at h₂
         exact h h₂,
       fun (h : ¬_ = 0) h₂ ↦ by
-        rw [← eq_iff_eq_val, zero_val] at h
+        rw [← eq_iff_eq_val, val_zero] at h
         exact h h₂⟩)
     (fun _ _ ↦ Iff.rfl)
 
@@ -208,12 +216,12 @@ example : True := ⟨⟩
 instance instField : Field Computableℝ := { instCommRing with
   qsmul := qsmulRec _
   exists_pair_ne := ⟨0, 1, by
-    rw [ne_eq, ← eq_iff_eq_val, zero_val, one_val]
+    rw [ne_eq, ← eq_iff_eq_val, val_zero, val_one]
     exact zero_ne_one⟩
   mul_inv_cancel := by
     intro a ha
-    rw [← eq_iff_eq_val, mul_val, inv_val, one_val]
-    have : val a ≠ 0 := by rwa [← zero_val, ne_eq, eq_iff_eq_val]
+    rw [← eq_iff_eq_val, val_mul, inv_val, val_one]
+    have : val a ≠ 0 := by rwa [← val_zero, ne_eq, eq_iff_eq_val]
     field_simp
   inv_zero := by rw [← eq_iff_eq_val]; simp
     }
@@ -221,7 +229,7 @@ instance instField : Field Computableℝ := { instCommRing with
 @[simp]
 theorem div_val : (x / y).val = x.val / y.val := by
   change (x * y⁻¹).val = _
-  rw [mul_val, inv_val]
+  rw [val_mul, inv_val]
   field_simp
 
 end field
@@ -256,7 +264,7 @@ theorem lt_iff_lt : x.val < y.val ↔ x < y := by
   subst hx'
   subst hy'
   rw [lt, ← mk, val_mk_eq_val, val_mk_eq_val, sub_mk, mk, Quotient.lift_mk]
-  rw [ComputableℝSeq.sign_pos_iff, ComputableℝSeq.sub_eq_sub, sub_pos]
+  rw [ComputableℝSeq.sign_pos_iff, ComputableℝSeq.val_sub, sub_pos]
 
 @[simp]
 theorem le_iff_le : x.val ≤ y.val ↔ x ≤ y := by
@@ -267,7 +275,7 @@ theorem le_iff_le : x.val ≤ y.val ↔ x ≤ y := by
   subst hy'
   rw [le, ← mk, val_mk_eq_val, val_mk_eq_val, sub_mk, mk, Quotient.lift_mk]
   rw [ComputableℝSeq.sign_sound, SignType.zero_eq_zero, sign_nonneg_iff]
-  rw [ComputableℝSeq.sub_eq_sub, sub_nonneg]
+  rw [ComputableℝSeq.val_sub, sub_nonneg]
 
 instance instDecidableLE : DecidableRel (fun (x y : Computableℝ) ↦ x ≤ y) :=
   fun a b ↦ by
@@ -290,7 +298,7 @@ instance instLinearOrderedField : LinearOrderedField Computableℝ := by
     }
   all_goals
     intros
-    simp only [← le_iff_le, ← lt_iff_lt, ← eq_iff_eq_val, add_val, mul_val, zero_val, one_val] at *
+    simp only [← le_iff_le, ← lt_iff_lt, ← eq_iff_eq_val, val_add, val_mul, val_zero, val_one] at *
     first
     | linarith (config := {splitNe := true})
     | apply mul_pos ‹_› ‹_›

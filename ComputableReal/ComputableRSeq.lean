@@ -1,6 +1,81 @@
 import Mathlib
 import ComputableReal.aux_lemmas
 
+namespace QInterval
+
+scoped notation "ℚInterval" => NonemptyInterval ℚ
+
+scoped instance (priority := 100) instMemℝℚInterval : Membership ℝ ℚInterval :=
+  ⟨fun a s => s.fst ≤ a ∧ a ≤ s.snd⟩
+
+section mul
+/--Multiplication on intervals of ℚ. TODO: Should generalize to any LinearOrderedField... -/
+def mul_pair (x y : ℚInterval) : ℚInterval :=
+  let ⟨⟨xl,xu⟩,_⟩ := x
+  let ⟨⟨yl,yu⟩,_⟩ := y
+  ⟨⟨min (min (xl*yl) (xu*yl)) (min (xl*yu) (xu*yu)),
+    max (max (xl*yl) (xu*yl)) (max (xl*yu) (xu*yu))⟩,
+    by simp only [le_max_iff, min_le_iff, le_refl, true_or, or_true, or_self]⟩
+
+/--Multiplication of intervals by a ℚ. TODO: Should generalize to any LinearOrderedField -/
+def mul_q (x : ℚInterval) (y : ℚ) : ℚInterval :=
+  if h : y ≥ 0 then
+    ⟨⟨x.fst * y, x.snd * y⟩, by dsimp; nlinarith [x.2]⟩
+  else
+    ⟨⟨x.snd * y, x.fst * y⟩, by dsimp; nlinarith [x.2]⟩
+
+scoped instance : Mul (ℚInterval) :=
+  ⟨mul_pair⟩
+
+scoped instance : HMul (ℚInterval) ℚ (ℚInterval) :=
+  ⟨mul_q⟩
+
+scoped instance : HDiv (ℚInterval) ℚ (ℚInterval) :=
+  ⟨fun x y ↦ x * y⁻¹⟩
+
+section slow
+set_option maxHeartbeats 400000
+theorem mul_pair_lb_is_lb {x y : ℚInterval} : ∀ xv ∈ x, ∀ yv ∈ y,
+    (mul_pair x y).fst ≤ xv * yv := by
+  intro xv ⟨hxl,hxu⟩ yv ⟨hyl,hyu⟩
+  dsimp [mul_pair]
+  push_cast
+  rcases le_or_lt xv 0 with hxn|hxp
+  all_goals rcases le_or_lt (y.fst:ℝ) 0 with hyln|hylp
+  all_goals rcases le_or_lt (y.snd:ℝ) 0 with hyun|hyup
+  all_goals try linarith
+  all_goals repeat rw [min_def]
+  all_goals split_ifs with h₁ h₂ h₃ h₃ h₂ h₃ h₃
+  all_goals try nlinarith
+
+theorem mul_pair_ub_is_ub {x y : ℚInterval} : ∀ xv ∈ x, ∀ yv ∈ y,
+    (mul_pair x y).snd ≥ xv * yv := by
+  intro xv ⟨hxl,hxu⟩ yv ⟨hyl,hyu⟩
+  dsimp [mul_pair]
+  push_cast
+  rcases le_or_lt xv 0 with hxn|hxp
+  all_goals rcases le_or_lt (y.1.1:ℝ) 0 with hyln|hylp
+  all_goals rcases le_or_lt (y.1.2:ℝ) 0 with hyun|hyup
+  all_goals try linarith
+  all_goals repeat rw [max_def]
+  all_goals split_ifs with h₁ h₂ h₃ h₃ h₂ h₃ h₃
+  all_goals try nlinarith
+
+end slow
+
+theorem mem_mul_pair {x y : ℚInterval} : ∀ xv ∈ x, ∀ yv ∈ y, xv * yv ∈ mul_pair x y :=
+  fun _ hx _ hy ↦ ⟨mul_pair_lb_is_lb _ hx _ hy, mul_pair_ub_is_ub _ hx _ hy⟩
+
+end mul
+
+scoped instance instRatCastQInterval : RatCast ℚInterval :=
+  ⟨fun q ↦ NonemptyInterval.pure q⟩
+
+scoped instance instOfNatQInterval : OfNat ℚInterval n :=
+  ⟨NonemptyInterval.pure n⟩
+
+end QInterval
+
 /-- Type class for sequences that converge to some real number from above and below. `lub` is a
   function that gives upper *and* lower bounds, bundled so it can reuse computation. `hcau`
   asserts that the two bounds are Cauchy sequences, `hlub` asserts that they're valid
@@ -11,40 +86,22 @@ import ComputableReal.aux_lemmas
   each other. -/
 structure ComputableℝSeq :=
   mk' ::
-  lub : ℕ → ℚ × ℚ
-  hcl : IsCauSeq abs fun n ↦ (lub n).1
-  hcu : IsCauSeq abs fun n ↦ (lub n).2
-  hlub : ∀n, (lub n).1 ≤ (Real.mk ⟨fun n ↦ (lub n).1, hcl⟩) ∧
-    (lub n).2 ≥ (Real.mk ⟨fun n ↦ (lub n).1, hcl⟩)
-  heq' : let lb : CauSeq ℚ abs := ⟨fun n ↦ (lub n).1, hcl⟩
-        let ub : CauSeq ℚ abs := ⟨fun n ↦ (lub n).2, hcu⟩
+  lub : ℕ → NonemptyInterval ℚ
+  hcl : IsCauSeq abs fun n ↦ (lub n).fst
+  hcu : IsCauSeq abs fun n ↦ (lub n).snd
+  hlub : ∀n, (lub n).fst ≤ (Real.mk ⟨fun n ↦ (lub n).fst, hcl⟩) ∧
+    (lub n).snd ≥ (Real.mk ⟨fun n ↦ (lub n).fst, hcl⟩)
+  heq' : let lb : CauSeq ℚ abs := ⟨fun n ↦ (lub n).fst, hcl⟩
+        let ub : CauSeq ℚ abs := ⟨fun n ↦ (lub n).snd, hcu⟩
         lb ≈ ub
-
-def tmp'.{u_1} :=
-fun {α : Type u_1} [inst : StrictOrderedRing.{u_1} α] =>
-      (@OrderedCancelAddCommMonoid.toContravariantClassLeft.{u_1} α
-        (@OrderedAddCommGroup.toOrderedCancelAddCommMonoid.{u_1} α
-          (@StrictOrderedRing.toOrderedAddCommGroup.{u_1} α inst)))
-
-#print axioms IsCauSeq
-#print axioms StrictOrderedRing.toStrictOrderedSemiring
-#print axioms StrictOrderedRing.toStrictOrderedSemiring.proof_1
-#print axioms OrderedCancelAddCommMonoid.toContravariantClassLeft
-#print axioms contravariant_le_iff_contravariant_lt_and_eq
-#print axioms Decidable.lt_or_eq_of_le
-#print axioms tmp'
-
-set_option pp.all true
-
-#print contravariant_le_iff_contravariant_lt_and_eq
-
-set_option pp.all false
 
 namespace ComputableℝSeq
 
-def lb (x : ComputableℝSeq) : CauSeq ℚ abs := ⟨fun n ↦ (x.lub n).1, x.hcl⟩
+open scoped QInterval
 
-def ub (x : ComputableℝSeq) : CauSeq ℚ abs := ⟨fun n ↦ (x.lub n).2, x.hcu⟩
+def lb (x : ComputableℝSeq) : CauSeq ℚ abs := ⟨fun n ↦ (x.lub n).fst, x.hcl⟩
+
+def ub (x : ComputableℝSeq) : CauSeq ℚ abs := ⟨fun n ↦ (x.lub n).snd, x.hcu⟩
 
 /-- Get the real value determined by the sequence. (Irreducibly) given here as the limit of
   the lower bound sequence. -/
@@ -68,6 +125,9 @@ theorem hlb (x : ComputableℝSeq) : ∀n, x.lb n ≤ x.val :=
 theorem hub (x : ComputableℝSeq) : ∀n, x.ub n ≥ x.val :=
   fun n ↦ val_eq_mk_lb _ ▸ (x.hlub n).2
 
+theorem val_mem_interval (x : ComputableℝSeq) : ∀n, x.val ∈ x.lub n :=
+  fun n ↦ ⟨x.hlb n, x.hub n⟩
+
 private theorem val_uniq' {x : ℝ} {lb ub : CauSeq ℚ abs} (hlb : ∀n, lb n ≤ x)
     (hub : ∀n, ub n ≥ x) (heq : lb ≈ ub) : Real.mk lb = x :=
   (Real.of_near lb x (fun εℝ hεℝ ↦
@@ -87,15 +147,16 @@ theorem val_uniq {x : ℝ} {s : ComputableℝSeq} (hlb : ∀n, s.lb n ≤ x) (hu
     s.val = x :=
   s.val_def ▸ val_uniq' hlb hub s.heq
 
-
 /-- Make a computable sequence for x from a separate lower and upper bound CauSeq. -/
 def mk (x : ℝ) (lb : CauSeq ℚ abs) (ub : CauSeq ℚ abs) (hlb : ∀n, lb n ≤ x) (hub : ∀n, ub n ≥ x)
     (heq : lb ≈ ub) : ComputableℝSeq where
-  lub n := ⟨lb.1 n, ub.1 n⟩
+  lub n := ⟨⟨lb.1 n, ub.1 n⟩, by let h := (hlb n).trans (hub n); norm_cast at h⟩
   hcl := lb.2
   hcu := ub.2
   heq' := heq
-  hlub n := Subtype.coe_eta _ _ ▸ (val_uniq' hlb hub heq) ▸ ⟨hlb n, hub n⟩
+  hlub n := by
+    rw [Subtype.coe_eta, val_uniq' hlb hub heq]
+    exact ⟨hlb n, hub n⟩
 
 theorem mk_val_eq_val : (mk x v₁ v₂ h₁ h₂ h₃).val = x :=
   val_uniq (by convert h₁) (by convert h₂)
@@ -113,7 +174,8 @@ theorem lb_le_ub (x : ComputableℝSeq) : ∀n, x.lb n ≤ x.ub n :=
 
 @[ext]
 theorem ext {x y : ComputableℝSeq} (h₁ : ∀ n, x.lb n = y.lb n) (h₂ : ∀ n, x.ub n = y.ub n) : x = y :=
-  mk'.injEq _ _ _ _ _ _ _ _ _ _ ▸ (funext fun n ↦ Prod.ext (h₁ n) (h₂ n))
+  mk'.injEq _ _ _ _ _ _ _ _ _ _ ▸ (funext fun n ↦ NonemptyInterval.ext (x.lub n) (y.lub n)
+    (Prod.ext (h₁ n) (h₂ n)))
 
 theorem ext_iff {x y : ComputableℝSeq} : (∀ n, x.lb n = y.lb n ∧ x.ub n = y.ub n) ↔ x = y :=
   ⟨fun h ↦ ext (fun n ↦ (h n).1) (fun n ↦ (h n).2), fun h _ ↦ h ▸ ⟨rfl, rfl⟩⟩
@@ -222,16 +284,13 @@ def sub (x : ComputableℝSeq) (y : ComputableℝSeq) : ComputableℝSeq :=
 -- instance instComputableQMul [ComputableℝSeq x] : ComputableℝSeq (q * x) :=
 --   mul_comm x q ▸ instComputableMulQ x q
 
+
 /-- "Bundled" multiplication to give lower and upper bounds. This bundling avoids the need to
   call lb and ub separately for each half (which, in a large product, leads to an exponential
   slowdown). This could be further optimized to use only two ℚ multiplications instead of four,
   when the sign is apparent. -/
-def mul' (x : ComputableℝSeq) (y : ComputableℝSeq) : ℕ → ℚ × ℚ :=
-  fun n ↦
-    let ⟨xl,xu⟩ := x.lub n
-    let ⟨yl,yu⟩ := y.lub n
-    ⟨min (min (xl*yl) (xu*yl)) (min (xl*yu) (xu*yu)),
-     max (max (xl*yl) (xu*yl)) (max (xl*yu) (xu*yu))⟩
+def mul' (x : ComputableℝSeq) (y : ComputableℝSeq) : ℕ → ℚInterval :=
+  fun n ↦ QInterval.mul_pair (x.lub n) (y.lub n)
 
 /-- More friendly expression for the lower bound for multiplication, as a CauSeq. -/
 def mul_lb (x : ComputableℝSeq) (y : ComputableℝSeq) : CauSeq ℚ abs :=
@@ -242,25 +301,25 @@ def mul_ub (x : ComputableℝSeq) (y : ComputableℝSeq) : CauSeq ℚ abs :=
   ((x.lb * y.lb) ⊔ (x.ub * y.lb)) ⊔ ((x.lb * y.ub) ⊔ (x.ub * y.ub))
 
 /-- The lower bounds from `mul'` are precisely the same sequence as `mul_lb`. -/
-theorem fst_mul'_eq_mul_lb : Prod.fst ∘ mul' x y = (mul_lb x y).1 := by
+theorem fst_mul'_eq_mul_lb : (fun i ↦ i.fst) ∘ mul' x y = (mul_lb x y).1 := by
   ext n
   dsimp
   rw [mul', mul_lb]
   congr
 
 /-- The upper bounds from `mul'` are precisely the same sequence as `mul_ub`. -/
-theorem snd_mul'_eq_mul_ub : Prod.snd ∘ mul' x y = (mul_ub x y).1 := by
+theorem snd_mul'_eq_mul_ub : (fun i ↦ i.snd) ∘ mul' x y = (mul_ub x y).1 := by
   ext n
   dsimp
   rw [mul', mul_ub]
   congr
 
 /-- The lower bounds from `mul'` form a Cauchy sequence. -/
-theorem mul'_fst_iscau : IsCauSeq abs (Prod.fst ∘ (mul' x y)) :=
+theorem mul'_fst_iscau : IsCauSeq abs ((fun i ↦ i.fst) ∘ (mul' x y)) :=
   fst_mul'_eq_mul_lb ▸ Subtype.property _
 
 /-- The upper bounds from `mul'` form a Cauchy sequence. -/
-theorem mul'_snd_iscau : IsCauSeq abs (Prod.snd ∘ (mul' x y)) :=
+theorem mul'_snd_iscau : IsCauSeq abs ((fun i ↦ i.snd) ∘ (mul' x y)) :=
   snd_mul'_eq_mul_ub ▸ Subtype.property _
 
 theorem lb_ub_mul_equiv (x : ComputableℝSeq) (y : ComputableℝSeq) :
@@ -280,52 +339,24 @@ theorem lb_ub_mul_equiv (x : ComputableℝSeq) (y : ComputableℝSeq) :
   <;> apply CauSeq.equiv_sup_of_equivs
   <;> exact CauSeq.mul_equiv_mul ‹_› ‹_›
 
-set_option maxHeartbeats 400000
 theorem mul_lb_is_lb (x : ComputableℝSeq) (y : ComputableℝSeq) (n : ℕ) :
-    (mul_lb x y).1 n ≤ x.val * y.val := by
-  dsimp [mul_lb, Inf.inf]
-  push_cast
-  have hl₁ := x.hlb n
-  have hl₂ := x.hub n
-  have hl₃ := y.hlb n
-  have hl₄ := y.hub n
-  rcases le_or_lt x.val 0 with hxn|hxp
-  all_goals rcases le_or_lt (y.lb n:ℝ) 0 with hyln|hylp
-  all_goals rcases le_or_lt (y.ub n:ℝ) 0 with hyun|hyup
-  all_goals try nlinarith
-  all_goals repeat rw [min_def]
-  all_goals split_ifs with h₁ h₂ h₃ h₃ h₂ h₃ h₃
-  all_goals try nlinarith
+    (mul_lb x y).1 n ≤ x.val * y.val :=
+  QInterval.mul_pair_lb_is_lb _ (x.val_mem_interval n) _ (y.val_mem_interval n)
 
 theorem mul_ub_is_ub (x : ComputableℝSeq) (y : ComputableℝSeq) (n : ℕ) :
-    (mul_ub x y).1 n ≥ x.val * y.val := by
-  dsimp [mul_ub, Sup.sup]
-  push_cast
-  have hl₁ := x.hlb n
-  have hl₂ := x.hub n
-  have hl₃ := y.hlb n
-  have hl₄ := y.hub n
-  rcases le_or_lt x.val 0 with hxn|hxp
-  all_goals rcases le_or_lt (y.lb n:ℝ) 0 with hyln|hylp
-  all_goals rcases le_or_lt (y.ub n:ℝ) 0 with hyun|hyup
-  all_goals try nlinarith
-  all_goals repeat rw [max_def]
-  all_goals split_ifs with h₁ h₂ h₃ h₃ h₂ h₃ h₃
-  all_goals try nlinarith
-set_option maxHeartbeats 200000 --back to normal
+    (mul_ub x y).1 n ≥ x.val * y.val :=
+  QInterval.mul_pair_ub_is_ub _ (x.val_mem_interval n) _ (y.val_mem_interval n)
 
 def mul (x : ComputableℝSeq) (y : ComputableℝSeq) : ComputableℝSeq where
   lub := mul' x y
   hcl := mul'_fst_iscau
   hcu := mul'_snd_iscau
   heq' := by convert lb_ub_mul_equiv x y
-  hlub n := by
-    have h₀ : Real.mk _ = x.val * y.val := by
+  hlub n :=
+    let h₀ : Real.mk _ = x.val * y.val := by
       apply val_uniq' (mul_lb_is_lb x y) (mul_ub_is_ub x y)
       convert lb_ub_mul_equiv x y
-    constructor
-    · convert mul_lb_is_lb x y n
-    · convert mul_ub_is_ub x y n
+    h₀ ▸ QInterval.mem_mul_pair _ (x.val_mem_interval n) _ (y.val_mem_interval n)
 
 instance instComputableZero : Zero ComputableℝSeq :=
   ⟨(0 : ℕ)⟩
@@ -395,7 +426,7 @@ theorem zero_ub : (0 : ComputableℝSeq).ub = 0 := by
   rfl
 
 @[simp]
-theorem zero_val : (0 : ComputableℝSeq).val = 0 :=
+theorem val_zero : (0 : ComputableℝSeq).val = 0 :=
   val_eq_mk_lb _ ▸ Real.mk_zero
 
 @[simp]
@@ -407,12 +438,8 @@ theorem one_ub : (1 : ComputableℝSeq).ub = 1 := by
   rfl
 
 @[simp]
-theorem one_val : (1 : ComputableℝSeq).val = 1 :=
+theorem val_one : (1 : ComputableℝSeq).val = 1 :=
   val_eq_mk_lb _ ▸ Real.mk_one
-
-@[simp]
-theorem add_eq_add : (x + y).val = x.val + y.val := by
-  convert (mk_val_eq_val : (add x y).val = x.val + y.val)
 
 @[simp]
 theorem lb_add : (x + y).lb = x.lb + y.lb :=
@@ -423,8 +450,8 @@ theorem ub_add : (x + y).ub = x.ub + y.ub :=
   rfl
 
 @[simp]
-theorem neg_eq_neg : (-x).val = -x.val := by
-  convert (mk_val_eq_val : (neg x).val = -x.val)
+theorem val_add : (x + y).val = x.val + y.val := by
+  convert (mk_val_eq_val : (add x y).val = x.val + y.val)
 
 @[simp]
 theorem lb_neg : (-x).lb = -x.ub :=
@@ -435,11 +462,8 @@ theorem ub_neg : (-x).ub = -x.lb := by
   rfl
 
 @[simp]
-theorem sub_eq_sub : (x - y).val = x.val - y.val := by
-  suffices (sub x y).val = x.val - y.val by
-    convert this
-  rw [sub, add, neg, mk_val_eq_val, mk_val_eq_val]
-  rfl
+theorem val_neg : (-x).val = -x.val := by
+  convert (mk_val_eq_val : (neg x).val = -x.val)
 
 @[simp]
 theorem lb_sub : (x - y).lb = x.lb - y.ub := by
@@ -458,11 +482,11 @@ theorem ub_sub : (x - y).ub = x.ub - y.lb := by
   ring_nf!
 
 @[simp]
-theorem mul_eq_mul : (x * y).val = x.val * y.val := by
-  suffices (mul x y).val = x.val * y.val by
+theorem val_sub : (x - y).val = x.val - y.val := by
+  suffices (sub x y).val = x.val - y.val by
     convert this
-  rw [val_def]
-  exact val_uniq' (mul_lb_is_lb x y) (mul_ub_is_ub x y) (lb_ub_mul_equiv x y)
+  rw [sub, add, neg, mk_val_eq_val, mk_val_eq_val]
+  rfl
 
 theorem lb_mul : (x * y).lb = ((x.lb * y.lb) ⊓ (x.ub * y.lb)) ⊓ ((x.lb * y.ub) ⊓ (x.ub * y.ub)) := by
   ext
@@ -473,6 +497,13 @@ theorem ub_mul : (x * y).ub = ((x.lb * y.lb) ⊔ (x.ub * y.lb)) ⊔ ((x.lb * y.u
   ext
   rw [← mul_ub, ← snd_mul'_eq_mul_ub]
   rfl
+
+@[simp]
+theorem val_mul : (x * y).val = x.val * y.val := by
+  suffices (mul x y).val = x.val * y.val by
+    convert this
+  rw [val_def]
+  exact val_uniq' (mul_lb_is_lb x y) (mul_ub_is_ub x y) (lb_ub_mul_equiv x y)
 
 end simps
 
@@ -652,13 +683,13 @@ theorem pos_ub_of_val {x : ComputableℝSeq} (hp : x.val > 0) : x.ub.Pos :=
   Real.mk_pos.1 (val_eq_mk_ub _ ▸ hp)
 
 theorem pos_neg_ub_of_val {x : ComputableℝSeq} (hn : x.val < 0) : (-x.ub).Pos :=
-  Real.mk_pos.1 (lb_neg _ ▸ val_eq_mk_lb _ ▸ neg_eq_neg _ ▸ Left.neg_pos_iff.mpr hn)
+  Real.mk_pos.1 (lb_neg _ ▸ val_eq_mk_lb _ ▸ val_neg _ ▸ Left.neg_pos_iff.mpr hn)
 
 theorem pos_lb_of_val {x : ComputableℝSeq} (hp : x.val > 0) : x.lb.Pos :=
   Real.mk_pos.1 (val_eq_mk_lb _ ▸ hp)
 
 theorem pos_neg_lb_of_val {x : ComputableℝSeq} (hn : x.val < 0) : (-x.lb).Pos :=
-  Real.mk_pos.1 (ub_neg _ ▸ val_eq_mk_ub _ ▸ neg_eq_neg _ ▸ Left.neg_pos_iff.mpr hn)
+  Real.mk_pos.1 (ub_neg _ ▸ val_eq_mk_ub _ ▸ val_neg _ ▸ Left.neg_pos_iff.mpr hn)
 
 /-- The sequence of lower bounds of 1/x. Only functions "correctly" to give lower bounds if we
    assume that hx is already `hx.dropTilSigned` (as proven in `lb_inv_correct`) -- but those
@@ -880,7 +911,7 @@ theorem val_inv (x : ComputableℝSeq) : x⁻¹.val = x.val⁻¹ := by
     next h =>
       let _ := (x.sign_neg_iff.1 h).ne
       contradiction
-    next h => exact zero_val
+    next h => exact val_zero
   · rwa [inv_eq_safe_inv, val_safe_inv]
 
 @[simp]
@@ -1044,7 +1075,7 @@ theorem lift₂ (fr : ℝ → ℝ → ℝ) (fs : ComputableℝSeq → Computable
   fun ⟨sx, hsx⟩ ⟨sy, hsy⟩ ↦ ⟨fs sx sy, hsx ▸ hsy ▸ h sx sy⟩
 
 instance instHasComputableAdd [hx : IsComputable x] [hy : IsComputable y] : IsComputable (x + y) :=
-  lift₂ _ (· + ·) ComputableℝSeq.add_eq_add hx hy
+  lift₂ _ (· + ·) ComputableℝSeq.val_add hx hy
 
 instance instComputableNat (n : ℕ) : IsComputable n :=
   ⟨ComputableℝSeq.ofRat n, ComputableℝSeq.val_natCast⟩
@@ -1067,12 +1098,12 @@ instance instComputableRat (q : ℚ) : IsComputable q :=
  seems broken -- but covering 1 seems nice and worth having. -/
 instance instComputableOfNat1 : IsComputable
     (@OfNat.ofNat.{0} Real 1 (@One.toOfNat1.{0} Real Real.instOneReal)) :=
-  ⟨1, ComputableℝSeq.one_val⟩
+  ⟨1, ComputableℝSeq.val_one⟩
 
 /-- Ideally this should be captured by instComputableOfNat, but the instance inference
  seems broken -- but covering 0 seems nice and worth having. -/
 instance instComputableOfNat0 : IsComputable
     (@OfNat.ofNat.{0} Real 0 (@Zero.toOfNat0.{0} Real Real.instZeroReal)) :=
-  ⟨0, ComputableℝSeq.zero_val⟩
+  ⟨0, ComputableℝSeq.val_zero⟩
 
 end IsComputable
