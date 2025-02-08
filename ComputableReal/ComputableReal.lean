@@ -1,9 +1,8 @@
-import Mathlib
 import ComputableReal.ComputableRSeq
 
 /-- Computable reals, defined as the quotient of ComputableℝSeq sequences -- sequences with
   Cauchy sequences of lower and upper bounds that converge to the same value -- by the equivalence
-  relation of havint the same converged value. This is similar to how reals are quotients of Cauchy
+  relation of having the same converged value. This is similar to how reals are quotients of Cauchy
   sequence (without any guarantees on lower/upper bounds). -/
 def Computableℝ :=
   @Quotient ComputableℝSeq ComputableℝSeq.equiv
@@ -43,14 +42,13 @@ def mapℝ' (f : ComputableℝSeq → ComputableℝSeq) (h : ∃ f₂ : ℝ → 
     Computableℝ → Computableℝ :=
   Quotient.map f (fun a b h₂ ↦ h.elim fun _ h ↦ (h₂ ▸ h a).trans (h b).symm)
 
-/-- Given a unary function that clearly mimics a standard real function, lift that. -/
+/-- Given a unary function on sequences that clearly matches function on reals, lift it. -/
 def mapℝ (f : ComputableℝSeq → ComputableℝSeq) {f₂ : ℝ → ℝ} (h : ∀x, (f x).val = f₂ x.val) :
     Computableℝ → Computableℝ :=
   mapℝ' f ⟨f₂, h⟩
 
 theorem mapℝ'_eq_mapℝ : mapℝ' f h = mapℝ f h₂ := by
-  ext
-  rw [mapℝ]
+  rfl
 
 /-- Alternate version of map₂ℝ that doesn't directly refer to f₂, so it stays
   computable even if f₂ isn't. -/
@@ -151,9 +149,9 @@ instance instCommRing : CommRing Computableℝ := by
             add := (· + ·)
             neg := (- ·)
             sub := (· - ·)
-            npow := @npowRec _ ⟨mk (1:ℕ)⟩ ⟨(· * ·)⟩
-            nsmul := @nsmulRec _ ⟨mk (0:ℕ)⟩ ⟨(· + ·)⟩
-            zsmul := @zsmulRec _ ⟨mk (0:ℕ)⟩ ⟨(· + ·)⟩ ⟨@Neg.neg _ _⟩,
+            npow := npowRec --todo faster instances
+            nsmul := nsmulRec
+            zsmul := zsmulRec
             .. }
   all_goals
     intros
@@ -163,8 +161,23 @@ instance instCommRing : CommRing Computableℝ := by
       simp
       try ring_nf!
 
+@[simp]
+theorem val_natpow (x : Computableℝ) (n : ℕ): (x ^ n).val = x.val ^ n := by
+  induction n
+  · rw [pow_zero, val_one, pow_zero]
+  · rename_i ih
+    rw [pow_succ, pow_succ, val_mul, ih]
+
+@[simp]
+theorem val_nsmul (x : Computableℝ) (n : ℕ) : (n • x).val = n • x.val := by
+  induction n
+  · simp
+  · rename_i ih
+    simpa using ih
+
 section safe_inv
 
+set_option linter.dupNamespace false in
 private def nz_quot_equiv := Equiv.subtypeQuotientEquivQuotientSubtype
     (fun x : ComputableℝSeq ↦ x.val ≠ 0)
     (fun x : Computableℝ ↦ x ≠ 0)
@@ -192,7 +205,11 @@ theorem safe_inv_val (hnz : x ≠ 0) : (x.safe_inv hnz).val = x.val⁻¹ := by
   let ⟨x',hx'⟩ := Quotient.exists_rep x
   subst hx'
   have : (nz_quot_equiv { val := ⟦x'⟧, property := hnz : { x : Computableℝ // x ≠ 0 } }) =
-      ⟦{ val := x', property := _ }⟧ := by
+      ⟦{ val := x', property := (by
+        rw [show (0 : Computableℝ) = ⟦0⟧ by rfl] at hnz
+        contrapose! hnz
+        rwa [← Computableℝ.val_zero, ← val_quot_eq_val, eq_iff_eq_val] at hnz
+      )}⟧ := by
     apply Equiv.subtypeQuotientEquivQuotientSubtype_mk
   rw [safe_inv, safe_inv', val, Equiv.toFun_as_coe, Equiv.invFun_as_coe, Quotient.lift_mk, this,
     Quotient.map_mk, nz_quot_equiv, Equiv.subtypeQuotientEquivQuotientSubtype_symm_mk,
@@ -214,7 +231,8 @@ theorem inv_val : (x⁻¹).val = (x.val)⁻¹ := by
 example : True := ⟨⟩
 
 instance instField : Field Computableℝ := { instCommRing with
-  qsmul := qsmulRec _
+  qsmul := _
+  nnqsmul := _
   exists_pair_ne := ⟨0, 1, by
     rw [ne_eq, ← eq_iff_eq_val, val_zero, val_one]
     exact zero_ne_one⟩

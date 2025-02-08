@@ -1,4 +1,8 @@
-import Mathlib
+import Mathlib.Algebra.Order.Interval.Basic
+import Mathlib.Data.Real.Archimedean
+import Mathlib.Data.Sign
+import Mathlib.Tactic.Rify
+
 import ComputableReal.aux_lemmas
 
 namespace QInterval
@@ -6,7 +10,7 @@ namespace QInterval
 scoped notation "ℚInterval" => NonemptyInterval ℚ
 
 scoped instance (priority := 100) instMemℝℚInterval : Membership ℝ ℚInterval :=
-  ⟨fun a s => s.fst ≤ a ∧ a ≤ s.snd⟩
+  ⟨fun s a => s.fst ≤ a ∧ a ≤ s.snd⟩
 
 section mul
 /--Multiplication on intervals of ℚ. TODO: Should generalize to any LinearOrderedField... -/
@@ -84,7 +88,7 @@ end QInterval
   a (non-shared) lower and upper bound sequence. The defs `lb`, `ub` are the actual CauSeq's ,
   `val` is the associated real number, and `hlb`, `hub`, and `heq` relate `lb` `ub` and `val` to
   each other. -/
-structure ComputableℝSeq :=
+structure ComputableℝSeq where
   mk' ::
   lub : ℕ → NonemptyInterval ℚ
   hcl : IsCauSeq abs fun n ↦ (lub n).fst
@@ -174,11 +178,7 @@ theorem lb_le_ub (x : ComputableℝSeq) : ∀n, x.lb n ≤ x.ub n :=
 
 @[ext]
 theorem ext {x y : ComputableℝSeq} (h₁ : ∀ n, x.lb n = y.lb n) (h₂ : ∀ n, x.ub n = y.ub n) : x = y :=
-  mk'.injEq _ _ _ _ _ _ _ _ _ _ ▸ (funext fun n ↦ NonemptyInterval.ext (x.lub n) (y.lub n)
-    (Prod.ext (h₁ n) (h₂ n)))
-
-theorem ext_iff {x y : ComputableℝSeq} : (∀ n, x.lb n = y.lb n ∧ x.ub n = y.ub n) ↔ x = y :=
-  ⟨fun h ↦ ext (fun n ↦ (h n).1) (fun n ↦ (h n).2), fun h _ ↦ h ▸ ⟨rfl, rfl⟩⟩
+  mk'.injEq _ _ _ _ _ _ _ _ _ _ ▸ (funext fun n ↦ NonemptyInterval.ext (Prod.ext (h₁ n) (h₂ n)))
 
 /-- All rational numbers `q` have a computable sequence: the constant sequence `q`. -/
 def ofRat (q : ℚ) : ComputableℝSeq :=
@@ -553,7 +553,7 @@ theorem sign_zero_iff (x : ComputableℝSeq) : x.sign = SignType.zero ↔ x.val 
 
 /-- If x is nonzero, there is eventually a point in the Cauchy sequences where either the lower
 or upper bound prove this. This theorem states that this point exists. -/
-theorem sign_witness_term (x : ComputableℝSeq) (hnz : x.val ≠ 0) :
+noncomputable def sign_witness_term (x : ComputableℝSeq) (hnz : x.val ≠ 0) :
     { xq : ℕ × ℚ // (0:ℝ) < xq.2 ∧ xq.2 < abs x.val ∧ ∀ j ≥ xq.1, |(x.lb - x.ub) j| < xq.2} := by
     have hsx : abs x.val > 0 := by positivity
     have hq' : ∃(q:ℚ), (0:ℝ) < q ∧ q < abs x.val := exists_rat_btwn hsx
@@ -757,7 +757,7 @@ theorem lb_inv_correct {x : ComputableℝSeq} (hnz : x.val ≠ 0) : ∀n,
   split_ifs with hp
   · simp only [CauSeq.inv_apply, Rat.cast_inv]
     rw [is_pos_iff, val_dropTilSigned] at hp
-    apply inv_le_inv_of_le hp
+    apply inv_anti₀ hp
     apply hub
   · have hv : val x < 0 := by rw [is_pos_iff, val_dropTilSigned] at hp; linarith (config:={splitNe:=true})
     dsimp
@@ -777,7 +777,7 @@ theorem ub_inv_correct {x : ComputableℝSeq} (hnz : x.val ≠ 0) : ∀n,
     dsimp
     split_ifs with h
     <;> simp only [Rat.cast_inv]
-    <;> apply inv_le_inv_of_le ?_ ((val_dropTilSigned hnz) ▸ hlb _ _)
+    <;> apply inv_anti₀ ?_ ((val_dropTilSigned hnz) ▸ hlb _ _)
     · exact_mod_cast (dropTilSigned_pos hnz).1 hv
     · exact_mod_cast not_le.1 h
   · simp only [CauSeq.inv_apply, Rat.cast_inv]
@@ -889,7 +889,7 @@ instance instDiv : Div ComputableℝSeq :=
 theorem inv_def (x : ComputableℝSeq) : x⁻¹ = x.inv :=
   rfl
 
-/-- The inverse is equal to the `safe_inv`. This is an actual of sequences, not just their values. -/
+/-- The inverse is equal to the `safe_inv`. This is an actual equality of sequences, not just equivalence. -/
 theorem inv_eq_safe_inv {x : ComputableℝSeq} (hnz : x.val ≠ 0) : x⁻¹ = x.safe_inv hnz := by
   rw [inv_def, inv]
   split
@@ -945,7 +945,10 @@ theorem mul_comm (x y : ComputableℝSeq) : x * y = y * x := by
     nth_rw 2 [sup_comm]
 
 -- theorem mul_assoc (x y z : ComputableℝSeq) : (x * y) * z = x * (y * z) := by
---   sorry
+--   ext n
+--   · simp only [lb_mul, ub_mul, mul_lb, mul_ub]
+--     sorry
+--   · sorry
 
 -- theorem left_distrib (x y z : ComputableℝSeq) : x * (y + z) = x * y + x * z := by
 --   ext n
@@ -981,7 +984,9 @@ theorem neg_eq_of_add (x y : ComputableℝSeq) (h : x + y = 0) : -x = y := by
   have hlb : ∀(x y : ComputableℝSeq), x + y = 0 → x.lb = -y.ub := by
     intro x y h
     ext n
-    let ⟨h₁, h₂⟩ := ext_iff.2 h n
+    let ⟨h₁, h₂⟩ := ComputableℝSeq.ext_iff.mp h
+    specialize h₁ n
+    specialize h₂ n
     simp only [lb_add, ub_add, CauSeq.add_apply, zero_lb, zero_ub, CauSeq.zero_apply, CauSeq.neg_apply] at h₁ h₂ ⊢
     have h₃ := x.lb_le_ub n
     have h₄ := y.lb_le_ub n
@@ -1017,8 +1022,8 @@ instance instSeqCompSeqClass : CompSeqClass ComputableℝSeq := by
             sub := (· - ·)
             inv := (·⁻¹)
             div := (· / ·)
-            nsmul := @nsmulRec _ ⟨(0 : ℕ)⟩ ⟨(· + ·)⟩
-            zsmul := @zsmulRec _ ⟨(0 : ℕ)⟩ ⟨(· + ·)⟩ ⟨@Neg.neg _ _⟩
+            nsmul := nsmulRec
+            zsmul := zsmulRec
              --inline several of the "harder" proofs that can't be done automatically
             add_comm := add_comm
             mul_comm := mul_comm
@@ -1050,6 +1055,13 @@ instance instSeqCompSeqClass : CompSeqClass ComputableℝSeq := by
             Pi.sup_apply, Pi.inf_apply, sup_eq_right, inf_eq_left, lb_le_ub a n]
        }
 
+-- @[simp]
+-- theorem val_natpow (x : ComputableℝSeq) (n : ℕ): (x ^ n).val = x.val ^ n := by
+--   induction n
+--   · rw [pow_zero, val_one, pow_zero]
+--   · rename_i ih
+--     rw [pow_succ, pow_succ, val_mul, ih]
+
 end semiring
 
 
@@ -1062,48 +1074,3 @@ theorem equiv_iff {x y : ComputableℝSeq} : x ≈ y ↔ x.val = y.val :=
   ⟨id, id⟩
 
 end ComputableℝSeq
-
-/- Type class stating that `x:ℝ` has a ComputableℝSeq, i.e. that x is a computable number.-/
-class inductive IsComputable (x : ℝ) : Prop where
-  | mk (seq : ComputableℝSeq) (prop : seq.val = x)
-
-namespace IsComputable
-
-theorem lift₂ (fr : ℝ → ℝ → ℝ) (fs : ComputableℝSeq → ComputableℝSeq → ComputableℝSeq)
-    (h : ∀a b, (fs a b).val = fr a.val b.val) :
-    IsComputable x → IsComputable y → IsComputable (fr x y) :=
-  fun ⟨sx, hsx⟩ ⟨sy, hsy⟩ ↦ ⟨fs sx sy, hsx ▸ hsy ▸ h sx sy⟩
-
-instance instHasComputableAdd [hx : IsComputable x] [hy : IsComputable y] : IsComputable (x + y) :=
-  lift₂ _ (· + ·) ComputableℝSeq.val_add hx hy
-
-instance instComputableNat (n : ℕ) : IsComputable n :=
-  ⟨ComputableℝSeq.ofRat n, ComputableℝSeq.val_natCast⟩
-
-instance instComputableInt (z : ℤ) : IsComputable z :=
-  ⟨ComputableℝSeq.ofRat z, ComputableℝSeq.val_intCast⟩
-
-instance instComputableRat (q : ℚ) : IsComputable q :=
-  ⟨ComputableℝSeq.ofRat q, ComputableℝSeq.val_ratCast⟩
-
--- instance instComputableOfNat : (n : ℕ) → (i : OfNat ℝ n) → IsComputable (
---     @OfNat.ofNat ℝ n i : ℝ) :=
---   fun {n i} ↦ ⟨CauSeq.const qabs (OfNat.ofNat n (self := i)), CauSeq.const qabs n, fun _ ↦ by
---     rw [OfNat.ofNat]
---     simp
---     sorry--exact?,
---     ,fun _ ↦ rfl.le, sorry⟩
-
-/-- Ideally this should be captured by instComputableOfNat, but the instance inference
- seems broken -- but covering 1 seems nice and worth having. -/
-instance instComputableOfNat1 : IsComputable
-    (@OfNat.ofNat.{0} Real 1 (@One.toOfNat1.{0} Real Real.instOneReal)) :=
-  ⟨1, ComputableℝSeq.val_one⟩
-
-/-- Ideally this should be captured by instComputableOfNat, but the instance inference
- seems broken -- but covering 0 seems nice and worth having. -/
-instance instComputableOfNat0 : IsComputable
-    (@OfNat.ofNat.{0} Real 0 (@Zero.toOfNat0.{0} Real Real.instZeroReal)) :=
-  ⟨0, ComputableℝSeq.val_zero⟩
-
-end IsComputable

@@ -1,4 +1,4 @@
-import Mathlib
+import Mathlib.Data.Real.Archimedean
 
 --============
 --silly lemmas
@@ -34,7 +34,7 @@ theorem sup_equiv_of_equivs (ha : a ≈ c) (hb : b ≈ c) : a ⊔ b ≈ c := by
   replace hi₁ := hi₁ j (Nat.max_le.mp hj).1
   replace hi₂ := hi₂ j (Nat.max_le.mp hj).2
   dsimp at hi₁ hi₂ ⊢
-  rw [sup_eq_max, max_def]
+  rw [max_def]
   rw [abs_ite_le] at hi₁ hi₂ ⊢
   split_ifs at hi₁ hi₂ ⊢
   all_goals linarith
@@ -53,7 +53,7 @@ theorem inf_equiv_of_equivs (ha : a ≈ c) (hb : b ≈ c) : a ⊓ b ≈ c := by
   replace hi₁ := hi₁ j (Nat.max_le.mp hj).1
   replace hi₂ := hi₂ j (Nat.max_le.mp hj).2
   dsimp at hi₁ hi₂ ⊢
-  rw [inf_eq_min, min_def]
+  rw [min_def]
   rw [abs_ite_le] at hi₁ hi₂ ⊢
   split_ifs at hi₁ hi₂ ⊢
   all_goals linarith
