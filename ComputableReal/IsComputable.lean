@@ -94,7 +94,18 @@ instance instDecidableLE [hx : IsComputable x] [hy : IsComputable y] : Decidable
     simp only [← Computableℝ.le_iff_le, Computableℝ.val_mk_eq_val, hx.prop, hy.prop]
   )
 
-private theorem test_exec : ((3 : ℝ) + 5) / 100 ≤ (3 : ℚ) * (5 + 5^2 - 1) := by
+instance instDecidableEq [hx : IsComputable x] [hy : IsComputable y] : Decidable (x = y) :=
+  decidable_of_decidable_of_iff (p := (Computableℝ.mk hx.seq = Computableℝ.mk hy.seq)) (by
+    simp only [← Computableℝ.eq_iff_eq_val, Computableℝ.val_mk_eq_val, hx.prop, hy.prop]
+  )
+
+instance instDecidableLT [hx : IsComputable x] [hy : IsComputable y] : Decidable (x < y) :=
+  decidable_of_decidable_of_iff (p := Computableℝ.mk hx.seq < Computableℝ.mk hy.seq) (by
+    simp only [← Computableℝ.lt_iff_lt, Computableℝ.val_mk_eq_val, hx.prop, hy.prop]
+  )
+
+private theorem test_exec : ((3 : ℝ) + (5 : ℕ)) / 100 < (3 : ℚ) * (5 + (1 / 5)^2 - 1) ∧
+    (5:ℕ) = ((1:ℝ) + (2:ℚ)^2) := by
   native_decide
 
 end IsComputable
