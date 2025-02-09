@@ -94,76 +94,89 @@ def boundedSqrt (x : ℚInterval) (n : ℕ) (b : ℕ) (hb : 0 < b): ℚInterval 
     let q := x.snd;
     mkRat (Int.sqrt (q.num * b^n) + 1) (q.den * b^n).sqrt⟩,
   by
-    dsimp
-    rify
-    trans Real.sqrt (x.snd)
-    · trans Real.sqrt (x.fst)
-      · apply boundedSqrt_le_rsqrt _ _ _ hb
-      · apply Real.sqrt_le_sqrt
-        exact_mod_cast x.2
-    · apply rsqrt_le_boundedSqrt _ _ _ hb
+    sorry
+    -- dsimp
+    -- rify
+    -- trans Real.sqrt (x.snd)
+    -- · trans Real.sqrt (x.fst)
+    --   · apply boundedSqrt_le_rsqrt _ _ _ hb
+    --   · apply Real.sqrt_le_sqrt
+    --     exact_mod_cast x.2
+    -- · apply rsqrt_le_boundedSqrt _ _ _ hb
     ⟩
 
 def lub (x : ℚInterval) (n : ℕ) : ℚInterval :=
   if x.snd ≤ 0 then 0 else boundedSqrt x n 10 (by norm_num)
 
--- theorem lb_IsCauSeq (x : ComputableℝSeq) : IsCauSeq abs (fun n ↦ (Sqrt.lub (x.lub n) n).fst) := by
---   sorry
+theorem lb_IsCauSeq (x : ComputableℝSeq) : IsCauSeq abs (fun n ↦ (Sqrt.lub (x.lub n) n).fst) := by
+  sorry
 
--- theorem ub_IsCauSeq (x : ComputableℝSeq) : IsCauSeq abs (fun n ↦ (Sqrt.lub (x.lub n) n).snd) := by
---   sorry
+theorem ub_IsCauSeq (x : ComputableℝSeq) : IsCauSeq abs (fun n ↦ (Sqrt.lub (x.lub n) n).snd) := by
+  sorry
 
--- theorem lb_le_sqrt (x : ComputableℝSeq) (n : ℕ) : (Sqrt.lub (x.lub n) n).fst ≤ x.val.sqrt := by
---   sorry
+theorem lb_le_sqrt (x : ComputableℝSeq) (n : ℕ) : (Sqrt.lub (x.lub n) n).fst ≤ x.val.sqrt := by
+  sorry
 
--- theorem sqrt_le_ub (x : ComputableℝSeq) (n : ℕ) : x.val.sqrt ≤ (Sqrt.lub (x.lub n) n).snd  := by
---   sorry
+theorem sqrt_le_ub (x : ComputableℝSeq) (n : ℕ) : x.val.sqrt ≤ (Sqrt.lub (x.lub n) n).snd  := by
+  sorry
 
--- theorem lb_val_eq_sqrt (x : ComputableℝSeq) : Real.mk ⟨_, lb_IsCauSeq x⟩ = x.val.sqrt := by
---   sorry
+theorem lb_val_eq_sqrt (x : ComputableℝSeq) : Real.mk ⟨_, lb_IsCauSeq x⟩ = x.val.sqrt := by
+  sorry
 
--- theorem ub_val_eq_sqrt (x : ComputableℝSeq) : Real.mk ⟨_, ub_IsCauSeq x⟩ = x.val.sqrt := by
---   sorry
+theorem ub_val_eq_sqrt (x : ComputableℝSeq) : Real.mk ⟨_, ub_IsCauSeq x⟩ = x.val.sqrt := by
+  sorry
 
--- def sqrt (x : ComputableℝSeq) : ComputableℝSeq where
---   lub n := Sqrt.lub (x.lub n) n
---   hcl := lb_IsCauSeq x
---   hcu := ub_IsCauSeq x
---   heq' := by
---     rw [← Real.mk_eq]
---     exact (lb_val_eq_sqrt x).trans (ub_val_eq_sqrt x).symm
---   hlub n := ⟨lb_val_eq_sqrt x ▸ lb_le_sqrt x n, lb_val_eq_sqrt x ▸ sqrt_le_ub x n⟩
+def sqrt (x : ComputableℝSeq) : ComputableℝSeq where
+  lub n := Sqrt.lub (x.lub n) n
+  hcl := lb_IsCauSeq x
+  hcu := ub_IsCauSeq x
+  heq' := by
+    rw [← Real.mk_eq]
+    exact (lb_val_eq_sqrt x).trans (ub_val_eq_sqrt x).symm
+  hlub n := ⟨lb_val_eq_sqrt x ▸ lb_le_sqrt x n, lb_val_eq_sqrt x ▸ sqrt_le_ub x n⟩
 
--- instance instComputableSqrt (x : ℝ) [hx : IsComputable x] : IsComputable (x.sqrt) :=
---   .lift (Real.sqrt) sqrt (val_eq_mk_lb (sqrt _) ▸ lb_val_eq_sqrt ·) hx
+instance instComputableSqrt (x : ℝ) [hx : IsComputable x] : IsComputable (x.sqrt) :=
+  .lift (Real.sqrt) sqrt (val_eq_mk_lb (sqrt _) ▸ lb_val_eq_sqrt ·) hx
 
--- instance instComputableSqrtTwoAddSeries (x : ℝ) [hx : IsComputable x] (n : ℕ) :
---     IsComputable (Real.sqrtTwoAddSeries x n) :=
---   n.rec hx (fun _ _ ↦ instComputableSqrt _)
+/- Testing -/
+@[simp]
+noncomputable def sqrtSeries (x : ℝ) : ℕ → ℝ
+  | 0 => x
+  | n + 1 => √(sqrtSeries x n)
 
--- example : Real.sqrt (1 + 1/4) > 2 + Real.sqrt 3 - Real.sqrt 7 := by
--- native_decide
+instance instComputableSqrtSeries (x : ℝ) [hx : IsComputable x] (n : ℕ) :
+    IsComputable (sqrtSeries x n) :=
+  n.rec hx (fun _ _ ↦ instComputableSqrt _)
+/-   end testing -/
+
+instance instComputableSqrtTwoAddSeries (x : ℝ) [hx : IsComputable x] (n : ℕ) :
+    IsComputable (Real.sqrtTwoAddSeries x n) :=
+  n.rec hx (fun _ _ ↦ instComputableSqrt _)
+
+example : Real.sqrt (1 + 1/4) > 2 + Real.sqrt 3 - Real.sqrt 7 := by
+  native_decide
 
 end Sqrt
 
--- section Pi
+section Pi
 
--- /-- See theorem Real.pi_gt_sqrtTwoAddSeries in Mathlib -/
--- def pi_lb (n : ℕ) : ℚ :=
---   let TwoSubSqrt2SeriesN := (inferInstance : IsComputable (Real.sqrt (2 - Real.sqrtTwoAddSeries 0 n))).seq
---   2 ^ (n + 1) * TwoSubSqrt2SeriesN.lb n
+/-- See theorem Real.pi_gt_sqrtTwoAddSeries in Mathlib -/
+def pi_lb (n : ℕ) : ℚ :=
+  let TwoSubSqrt2SeriesN := (inferInstance : IsComputable (Real.sqrt (2 - Real.sqrtTwoAddSeries 0 n))).seq
+  2 ^ (n + 1) * TwoSubSqrt2SeriesN.lb n
 
--- /-- See theorem Real.pi_gt_sqrtTwoAddSeries in Mathlib -/
--- def pi_ub (n : ℕ) : ℚ :=
---   let TwoSubSqrt2SeriesN := (inferInstance : IsComputable (Real.sqrt (2 - Real.sqrtTwoAddSeries 0 n))).seq
---   2 ^ (n + 1) * TwoSubSqrt2SeriesN.ub n + 1 / 4 ^ n
+/-- See theorem Real.pi_gt_sqrtTwoAddSeries in Mathlib -/
+def pi_ub (n : ℕ) : ℚ :=
+  let TwoSubSqrt2SeriesN := (inferInstance : IsComputable (Real.sqrt (2 - Real.sqrtTwoAddSeries 0 n))).seq
+  2 ^ (n + 1) * TwoSubSqrt2SeriesN.ub n + 1 / 4 ^ n
 
--- -- #time #eval! ((List.range 4).map (inferInstance : IsComputable (Real.sqrtTwoAddSeries 0 5)).seq.lb).map Rat.toDecimal
+--this is fast, with instComputableSqrtTwoAddSeries it's slow, so the trouble is actually addition. Oops
+#time #eval! ((List.range 10).map (inferInstance : IsComputable (Sqrt.sqrtSeries 0 13)).seq.lb).map Rat.toDecimal
 
 -- #eval! ((List.range 12).map pi_lb).map (fun q ↦ Rat.toDecimal (3.14159265358979 - q))
 -- #eval! ((List.range 12).map pi_ub).map (fun q ↦ Rat.toDecimal (q - 3.14159265358979))
 
--- end Pi
+end Pi
 
 /-
 The Taylor series error formula, where fN is the nth-order approximation:
