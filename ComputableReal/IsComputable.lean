@@ -61,6 +61,9 @@ instance instComputableDiv [hx : IsComputable x] [hy : IsComputable y] : IsCompu
   lift₂ _ (· / ·) ComputableℝSeq.val_div hx hy
 
 instance instComputableNatPow [hx : IsComputable x] (n : ℕ) : IsComputable (x ^ n) := by
+  --TODO: Redo this to use native powering on the ComputableℝSeq. This avoids more costly
+  -- (and inaccurate) interval multiplications. That will also turn it into exponentiation
+  -- by squaring.
   induction n
   · rw [pow_zero]
     infer_instance
@@ -74,9 +77,15 @@ instance instComputableZPow [hx : IsComputable x] (z : ℤ) : IsComputable (x ^ 
   · simp only [zpow_negSucc]
     infer_instance
 
-instance instComputableNSMul [hx : IsComputable x] (n : ℕ) : IsComputable (n • x) := by
-  rw [nsmul_eq_mul]
-  infer_instance
+instance instComputableNSMul [hx : IsComputable x] (n : ℕ) : IsComputable (n • x) :=
+  lift _ (n • ·) (by
+    --TODO move to a ComputableℝSeq lemma
+    intro a
+    induction n
+    · simp
+    · rename_i ih
+      simp [ih, succ_nsmul, add_mul]
+    ) hx
 
 instance instComputableZSMul [hx : IsComputable x] (z : ℤ) : IsComputable (z • x) := by
   rw [zsmul_eq_mul]
@@ -104,7 +113,7 @@ instance instDecidableLT [hx : IsComputable x] [hy : IsComputable y] : Decidable
     simp only [← Computableℝ.lt_iff_lt, Computableℝ.val_mk_eq_val, hx.prop, hy.prop]
   )
 
-private theorem test_exec : ((3 : ℝ) + (5 : ℕ)) / 100 < (3 : ℚ) * (5 + (1 / 5)^2 - 1) ∧
+example : ((3 : ℝ) + (5 : ℕ)) / 100 < (3 : ℚ) * (5 + (1 / 5)^2 - 1) ∧
     (5:ℕ) = ((1:ℝ) + (2:ℚ)^2) := by
   native_decide
 
