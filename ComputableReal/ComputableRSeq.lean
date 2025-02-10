@@ -151,27 +151,44 @@ theorem val_uniq {x : ℝ} {s : ComputableℝSeq} (hlb : ∀n, s.lb n ≤ x) (hu
     s.val = x :=
   s.val_def ▸ val_uniq' hlb hub s.heq
 
+-- /-- Make a computable sequence for x from a separate lower and upper bound CauSeq. -/
+-- def mk (x : ℝ) (lb : CauSeq ℚ abs) (ub : CauSeq ℚ abs) (hlb : ∀n, lb n ≤ x) (hub : ∀n, ub n ≥ x)
+--     (heq : lb ≈ ub) : ComputableℝSeq where
+--   lub n := ⟨⟨lb.1 n, ub.1 n⟩, by let h := (hlb n).trans (hub n); norm_cast at h⟩
+--   hcl := lb.2
+--   hcu := ub.2
+--   heq' := heq
+--   hlub n := by
+--     rw [Subtype.coe_eta, val_uniq' hlb hub heq]
+--     exact ⟨hlb n, hub n⟩
+
 /-- Make a computable sequence for x from a separate lower and upper bound CauSeq. -/
-def mk (x : ℝ) (lb : CauSeq ℚ abs) (ub : CauSeq ℚ abs) (hlb : ∀n, lb n ≤ x) (hub : ∀n, ub n ≥ x)
-    (heq : lb ≈ ub) : ComputableℝSeq where
-  lub n := ⟨⟨lb.1 n, ub.1 n⟩, by let h := (hlb n).trans (hub n); norm_cast at h⟩
-  hcl := lb.2
-  hcu := ub.2
+def mk (x : ℝ) (lub : ℕ → ℚInterval)
+    (hcl : IsCauSeq abs (fun n ↦ (lub n).fst))
+    (hcu : IsCauSeq abs (fun n ↦ (lub n).snd))
+    (hlb : ∀n, (lub n).fst ≤ x)
+    (hub : ∀n, (lub n).snd ≥ x)
+    (heq : let lb : CauSeq ℚ abs := ⟨fun n ↦ (lub n).fst, hcl⟩
+        let ub : CauSeq ℚ abs := ⟨fun n ↦ (lub n).snd, hcu⟩
+        lb ≈ ub) : ComputableℝSeq where
+  lub := lub
+  hcl := hcl
+  hcu := hcu
   heq' := heq
   hlub n := by
-    rw [Subtype.coe_eta, val_uniq' hlb hub heq]
+    rw [val_uniq' hlb hub heq]
     exact ⟨hlb n, hub n⟩
 
-theorem mk_val_eq_val : (mk x v₁ v₂ h₁ h₂ h₃).val = x :=
-  val_uniq (by convert h₁) (by convert h₂)
+theorem mk_val_eq_val : (mk x v h₁ h₂ h₃ h₄ h₅).val = x :=
+  val_uniq (by convert h₃) (by convert h₄)
 
-@[simp]
-theorem mk_lb {x lb ub hlb hub heq} : (mk x lb ub hlb hub heq).lb = lb :=
-  rfl
+-- @[simp]
+-- theorem mk_lb {x v h₁ h₂ h₃ h₄ h₅} : (mk x v h₁ h₂ h₃ h₄ h₅).lb = ⟨fun n ↦ (x.v n).fst, h₁⟩ :=
+--   rfl
 
-@[simp]
-theorem mk_ub {x lb ub hlb hub heq} : (mk x lb ub hlb hub heq).ub = ub :=
-  rfl
+-- @[simp]
+-- theorem mk_ub {x lb ub hlb hub heq} : (mk x lb ub hlb hub heq).ub = ub :=
+--   rfl
 
 theorem lb_le_ub (x : ComputableℝSeq) : ∀n, x.lb n ≤ x.ub n :=
   fun n ↦ Rat.cast_le.mp (le_trans (x.hlb n) (x.hub n))
@@ -182,7 +199,10 @@ theorem ext {x y : ComputableℝSeq} (h₁ : ∀ n, x.lb n = y.lb n) (h₂ : ∀
 
 /-- All rational numbers `q` have a computable sequence: the constant sequence `q`. -/
 def ofRat (q : ℚ) : ComputableℝSeq :=
-  mk q (CauSeq.const abs q) (CauSeq.const abs q) (fun _ ↦ rfl.le) (fun _ ↦ rfl.le)
+  mk q
+    (fun _ ↦ NonemptyInterval.pure q)
+    (IsCauSeq.const q) (IsCauSeq.const q)
+    (fun _ ↦ rfl.le) (fun _ ↦ rfl.le)
     (Real.mk_eq.mp rfl)
 
 instance natCast : NatCast ComputableℝSeq where natCast n := ofRat n
@@ -191,22 +211,31 @@ instance intCast : IntCast ComputableℝSeq where intCast z := ofRat z
 
 instance ratCast : RatCast ComputableℝSeq where ratCast q := ofRat q
 
-def add (x : ComputableℝSeq) (y : ComputableℝSeq) : ComputableℝSeq := mk
-  (lb := x.lb + y.lb)
-  (ub := x.ub + y.ub)
-  (hlb := fun n ↦ by push_cast; exact add_le_add (x.hlb n) (y.hlb n))
-  (hub := fun n ↦ by push_cast; exact add_le_add (x.hub n) (y.hub n))
-  (heq := CauSeq.add_equiv_add x.heq y.heq)
+def add (x : ComputableℝSeq) (y : ComputableℝSeq) : ComputableℝSeq :=
+  mk (x.val + y.val)
+  (fun n ↦ x.lub n + y.lub n)
+  (IsCauSeq.add x.hcl y.hcl)
+  (IsCauSeq.add x.hcu y.hcu)
+  (by
+    intro n
+    rw [NonemptyInterval.fst_add]
+    push_cast
+    exact add_le_add (x.hlb n) (y.hlb n))
+  (by
+    intro n
+    rw [NonemptyInterval.snd_add]
+    push_cast
+    exact add_le_add (x.hub n) (y.hub n))
+  (have := CauSeq.add_equiv_add x.heq y.heq; this) --TODO why does 'inlining' the have not work
 
 def neg (x : ComputableℝSeq) : ComputableℝSeq :=
-  mk (lb := -x.ub) (ub := -x.lb)
-  (hlb := fun n ↦ by
-    rw [CauSeq.neg_apply, Rat.cast_neg, neg_le_neg_iff]
-    exact x.hub n)
-  (hub := fun n ↦ by
-    rw [CauSeq.neg_apply, Rat.cast_neg, ge_iff_le, neg_le_neg_iff]
-    exact x.hlb n)
-  (heq := CauSeq.neg_equiv_neg (Setoid.symm x.heq))
+  mk (-x.val)
+  (fun n ↦ -x.lub n)
+  (IsCauSeq.neg x.hcu)
+  (IsCauSeq.neg x.hcl)
+  (by simpa using x.hub ·)
+  (by simpa using x.hlb ·)
+  (have := CauSeq.neg_equiv_neg (Setoid.symm x.heq); this)
 
 def sub (x : ComputableℝSeq) (y : ComputableℝSeq) : ComputableℝSeq :=
   add x (neg y)
@@ -470,16 +499,16 @@ theorem lb_sub : (x - y).lb = x.lb - y.ub := by
   suffices (sub x y).lb = x.lb - y.ub by
     convert this
   rw [sub, add, neg]
-  rw [mk_lb, mk_lb]
-  ring_nf!
+  ext
+  simp [mk, lb, ub, sub_eq_add_neg]
 
 @[simp]
 theorem ub_sub : (x - y).ub = x.ub - y.lb := by
   suffices (sub x y).ub = x.ub - y.lb by
     convert this
   rw [sub, add, neg]
-  rw [mk_ub, mk_ub]
-  ring_nf!
+  ext
+  simp [mk, lb, ub, sub_eq_add_neg]
 
 @[simp]
 theorem val_sub : (x - y).val = x.val - y.val := by
@@ -627,8 +656,10 @@ theorem neg_of_not_pos {x : ComputableℝSeq} {hnz : x.val ≠ 0} (h : ¬is_pos 
 -/
 def dropTilSigned (x : ComputableℝSeq) (hnz : x.val ≠ 0) : ComputableℝSeq :=
   let start := sign_witness x hnz
-  mk (lb := x.lb.drop start)
-  (ub := x.ub.drop start)
+  mk (x := x.val)
+  (lub := fun n ↦ x.lub (start+n))
+  (hcl := (x.lb.drop start).prop)
+  (hcu := (x.ub.drop start).prop)
   (hlb := fun n ↦ x.hlb (start+n))
   (hub := fun n ↦ x.hub (start+n))
   (heq := Setoid.trans (
@@ -838,10 +869,16 @@ theorem ub_inv_signed_converges {x : ComputableℝSeq} (hnz : x.val ≠ 0) :
  upper and lower bounds. There is a separate `inv` that uses `sign` to construct the proof of
  nonzeroness by searching along the sequence (but isn't guaranteed to terminate). -/
 def safe_inv (x : ComputableℝSeq) (hnz : x.val ≠ 0) : ComputableℝSeq :=
+  --TODO currently this passes the sequence to lb_inv and ub_inv separately, which means we evaluate
+  --things twice (and this can lead to exponential slowdown for long series of inverses). This should
+  --be bundled
   let signed := x.dropTilSigned hnz
   let hnz' := val_dropTilSigned hnz ▸ hnz
-  mk (lb := signed.lb_inv hnz')
-  (ub := signed.ub_inv hnz')
+  mk (x := x.val⁻¹)
+  (lub := fun n ↦ ⟨⟨(signed.lb_inv hnz') n, (signed.ub_inv hnz') n⟩,
+    Rat.cast_le.mp ((lb_inv_correct hnz n).trans (ub_inv_correct hnz n))⟩)
+  (hcl := (signed.lb_inv hnz').2)
+  (hcu := (signed.ub_inv hnz').2)
   (hlb := lb_inv_correct hnz)
   (hub := ub_inv_correct hnz)
   (heq := Real.mk_eq.1 ((lb_inv_signed_converges hnz).trans (ub_inv_signed_converges hnz).symm))
