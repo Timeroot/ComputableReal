@@ -72,42 +72,6 @@ theorem drop_equiv_self (a : CauSeq α abs) (n : ℕ) : a.drop n ≈ a :=
   fun _ hq ↦ Exists.casesOn (cauchy₂ a hq)
     fun i hi ↦ ⟨i, fun _ hj ↦ hi _ (le_add_of_le_right hj) _ hj⟩
 
-section Rat
-
--- def apply (a : CauSeq ℚ abs) (f : ℚ → ℚ) (hf : Continuous f) : CauSeq ℚ abs :=
---   ⟨f ∘ a.1, by
---     -- let x := Real.mk a
---     intro ε hε
---     rw [continuous_iff_continuousAt] at hf
---     dsimp [ContinuousAt] at hf
---     simp_rw [LinearOrderedAddCommGroup.tendsto_nhds] at hf
---     rify at hf
---     -- let ⟨i, hi⟩ := a.2 ε hε
---     -- use i
---     -- intro j hj
---     -- replace hi := hi j hj
---     -- replace hf := hf (f (a i)) ε hε
---     -- dsimp [Filter.Eventually] at hf
---     -- by_contra hg; revert hf
---     -- simp only [imp_false, not_forall]
---     -- simp only [ge_iff_le, Function.comp_apply, not_exists, not_forall, not_lt, exists_prop] at hg
---     -- -- have := nhds x
---     -- have := tendsto_zero_iff_abs_tendsto_zero
---     -- simp at hf
---     -- cases hf
---     -- δ
---     sorry
---   ⟩
-
--- theorem equiv_apply (a b : CauSeq ℚ abs) (f : ℚ → ℚ) (hf : Continuous f) (hab : a ≈ b) :
---     a.apply f hf ≈ b.apply f hf := by
---   intro ε hε
---   rw [apply, apply]
---   dsimp
---   sorry
-
-end Rat
-
 namespace Completion
 
 --extracted from CauSeq.Completion.instInvCauchyToRing
@@ -138,13 +102,13 @@ theorem exists_CauSeq (x : ℝ) : ∃(s : CauSeq ℚ abs), Real.mk s = x :=
 
 end Real
 
-namespace Continuous
-
--- lemma continuous_embed (fq : ℚ → ℚ) (fr : ℝ → ℝ) (hfr : ∀q, fq q = fr q) (hf₂ : Continuous fr) :
---     Continuous fq :=
---   sorry
-
-end Continuous
+theorem cauchy_real_mk (x : CauSeq ℚ abs) : ∀ ε > 0, ∃ i, ∀ j ≥ i, |x j - Real.mk x| < ε := by
+  intro ε hε
+  obtain ⟨q, hq, hq'⟩ := exists_rat_btwn hε
+  obtain ⟨i, hi⟩ := x.2.cauchy₂ (by simpa using hq)
+  simp_rw [abs_sub_comm]
+  refine ⟨i, fun j hj ↦ lt_of_le_of_lt (Real.mk_near_of_forall_near ⟨i, fun k hk ↦ ?_⟩) hq'⟩
+  exact_mod_cast (hi k hk j hj).le
 
 --end silly lemmas
 --================

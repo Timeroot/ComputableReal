@@ -4,14 +4,6 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import Mathlib.Analysis.SpecialFunctions.Log.Base
 import Mathlib.Tactic.Peel
 
-theorem cauchy_real_mk (x : CauSeq ℚ abs) : ∀ ε > 0, ∃ i, ∀ j ≥ i, |x j - Real.mk x| < ε := by
-  intro ε hε
-  obtain ⟨q, hq, hq'⟩ := exists_rat_btwn hε
-  obtain ⟨i, hi⟩ := x.2.cauchy₂ (by simpa using hq)
-  simp_rw [abs_sub_comm]
-  refine ⟨i, fun j hj ↦ lt_of_le_of_lt (Real.mk_near_of_forall_near ⟨i, fun k hk ↦ ?_⟩) hq'⟩
-  exact_mod_cast (hi k hk j hj).le
-
 /-- This is very similar to the statement
 `TendstoLocallyUniformly (fun n x ↦ (F n x : ℝ)) (fun (q : ℚ) ↦ f q) .atTop`
 but that only uses neighborhoods within the rationals, which is a strictly
@@ -228,11 +220,6 @@ theorem lb_le_sqrt_lb (q : ℚInterval) (n : ℕ) : (sqrtq q n).fst ≤ Real.sqr
   · apply boundedSqrt_le_rsqrt q.toProd.1
     norm_num
 
--- theorem lb_le_sqrt (x : ComputableℝSeq) (n : ℕ) : (sqrtq (x.lub n) n).fst ≤ x.val.sqrt := by
---   trans Real.sqrt (x.lub n).fst
---   · apply lb_le_sqrt_lb
---   · exact Real.sqrt_le_sqrt (x.hlb n)
-
 theorem sqrt_ub_le_ub (q : ℚInterval) (n : ℕ) : Real.sqrt q.snd ≤ (sqrtq q n).snd := by
   rw [sqrtq]
   split_ifs with h
@@ -240,12 +227,6 @@ theorem sqrt_ub_le_ub (q : ℚInterval) (n : ℕ) : Real.sqrt q.snd ≤ (sqrtq q
     simp [this]
   · apply rsqrt_le_boundedSqrt q.toProd.2
     norm_num
-
--- theorem sqrt_le_ub (x : ComputableℝSeq) (n : ℕ) : x.val.sqrt ≤ (sqrtq (x.lub n) n).snd  := by
---   trans Real.sqrt (x.lub n).toProd.2
---   · apply Real.sqrt_le_sqrt
---     exact x.hub n
---   · apply sqrt_ub_le_ub
 
 /-- This equality is a generally true way to "split a denominator", but is particularly useful
 as an approximation when ε is small compared to y, and we wish to approximate
@@ -601,7 +582,7 @@ instance instComputableSqrtTwoAddSeries (x : ℝ) [hx : IsComputable x] (n : ℕ
     IsComputable (Real.sqrtTwoAddSeries x n) :=
   n.rec hx (fun _ _ ↦ instComputableSqrt _)
 
-example : Real.sqrt (1 + 1/4) > Real.sqrt (2 + Real.sqrt 3) / (Real.sqrt 7 - 1/2) := by
+example : Real.sqrt (1 + (1/4 : ℚ)) > Real.sqrt (2 + Real.sqrt (3 : ℕ)) / (Real.sqrt 7 - 1/2) := by
   native_decide
 
 end Sqrt
@@ -623,126 +604,5 @@ def pi_ub (n : ℕ) : ℚ :=
 -- #time #eval! Rat.toDecimal (prec := 40) (pi_lb 65 - 3.14159265358979323846264338327950288419716939937510)
 
 end Pi
-
-/-
-The Taylor series error formula, where fN is the nth-order approximation:
-f(x) - fN(x) = 1/(n+1)! * f^(n+1)(c) * x^(n+1) for some c in [0,x].
-
-For exp:
-exp(x) - expN(x) = 1/(n+1)! * exp(c) * x^(n+1)
-
-|exp(x) - expN(x)| = |1/(n+1)! * exp(c) * x^(n+1)|
-  <= |1/(n+1)! * exp(x) * x^(n+1)|
-
-|expN(x) - exp(x)| <= 1/(n+1)! * exp(x) * x^(n+1)
-
-expN(x) <= exp(x) + 1/(n+1)! * exp(x) * x^(n+1)
-
-expN(x) <= exp(x) (1 + x^(n+1) / (n+1)!)
-
-∴ exp(x) >= expN(x) / (1 + x^(n+1) / (n+1)!)
-
-likewise,
-
-exp(x) <= expN(x) / (1 - x^(n+1) / (n+1)!)
- if (1 - x^(n+1) / (n+1)!) >= 0, otherwise 0
--/
-
--- namespace Exp
-
--- --valid lower bound when 0 ≤ x. CauSeq that converges to Real.exp x from below.
--- def exp_lb' (x : ℚ) (n : ℕ) : ℚ :=
---   if 1 < x then
---     (exp_lb' (x/2) n)^2
---   else
---     -- (Finset.sum (Finset.range n) fun i => x ^ i / ↑(Nat.factorial i))
---     let series : ℚ := (List.range n).foldr (fun n v ↦ 1 + (x * v) / (n+1)) 1
---     series
---   termination_by (x.ceil).toNat
---   decreasing_by decreasing_with
---   constructor
---   · sorry
---   · sorry
-
--- --valid upper bound when 0 ≤ x. CauSeq that converges to Real.exp x from above.
--- def exp_ub' (x : ℚ) (n : ℕ) : ℚ :=
---   if 1/2 < x then
---     (exp_ub' (x/2) n)^2
---   else
---     -- (Finset.sum (Finset.range n) fun i => x ^ i / ↑(Nat.factorial i))
---     let series : ℚ := (List.range n).foldr (fun n v ↦ 1 + (x * v) / (n+1)) 1
---     let den_ub : ℚ := 1 - x^(n+1) / (n+1).factorial
---     series / den_ub
---   termination_by (x.ceil).toNat
---   decreasing_by decreasing_with
---   sorry
-
--- def exp_lb (x : ℚ) : CauSeq ℚ abs :=
---   if h : 0 ≤ x then
---     ⟨exp_lb' x, sorry⟩
---   else
---     ⟨1 / exp_ub' (-x), sorry⟩
-
--- def exp_ub (x : ℚ) : CauSeq ℚ abs :=
---   if h : 0 ≤ x then
---     ⟨exp_ub' x, sorry⟩
---   else
---     ⟨1 / exp_lb' (-x), sorry⟩
-
--- theorem exp_lb_is_lb (x : ℚ) : ∀ n, exp_lb x n ≤ Real.exp x :=
---   sorry
-
--- theorem exp_ub_is_ub (x : ℚ) : ∀ n, exp_ub x n ≥ Real.exp x :=
---   sorry
-
--- theorem exp_lb_val (x : ℚ) : Real.mk (exp_lb x) = Real.exp x :=
---   sorry
-
--- theorem exp_ub_val (x : ℚ) : Real.mk (exp_ub x) = Real.exp x :=
---   sorry
-
--- def exp_lub (x : ℚInterval) (n : ℕ) : ℚInterval :=
---   ⟨⟨exp_lb x.fst n, exp_ub x.snd n⟩,
---     Rat.cast_le.mp (by calc
---       _ ≤ Real.exp x.fst := exp_lb_is_lb _ n
---       _ ≤ Real.exp x.snd := Real.exp_monotone (Rat.cast_le.mpr x.2)
---       _ ≤ (exp_ub x.toProd.2) n := exp_ub_is_ub _ n
---     )⟩
-
--- -- theorem causeq_eq_self (s : CauSeq ℚ abs) {h : IsCauSeq abs s} : ⟨(s : ℕ → ℚ), h⟩ = s :=
---   -- rfl
-
--- end Exp
-
--- -- theorem exp_lb_correct
-
--- def exp (x : ComputableℝSeq) : ComputableℝSeq where
---   lub n := Exp.exp_lub (x.lub n) n
---   hcl := sorry
---   hcu := sorry
---   hlub n := sorry
---   heq' := sorry
-
--- theorem exp_eq_exp (x : ComputableℝSeq) : (exp x).val = Real.exp (x.val) := by
---   sorry
-
--- end ComputableℝSeq
-
--- namespace Computableℝ
-
--- def exp : Computableℝ → Computableℝ :=
---   mapℝ ComputableℝSeq.exp ComputableℝSeq.exp_eq_exp
-
--- #eval (exp (-1)).val
-
--- #eval (-exp (-1)).val
-
--- #eval -(-exp (exp (exp 0.1))).val
-
--- #eval ((List.range 11).map (exp (exp (exp 0.1))).unquot.lb).map Rat.toDecimal
-
--- #eval ((List.range 11).map (exp (exp (exp 0.1))).unquot.ub).map Rat.toDecimal
-
--- #eval ((List.range 20).map (fun n ↦ ComputableℝSeq.Exp.exp_lb (5) n)).map Rat.toDecimal
 
 end ComputableℝSeq

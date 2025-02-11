@@ -151,17 +151,6 @@ theorem val_uniq {x : ℝ} {s : ComputableℝSeq} (hlb : ∀n, s.lb n ≤ x) (hu
     s.val = x :=
   s.val_def ▸ val_uniq' hlb hub s.heq
 
--- /-- Make a computable sequence for x from a separate lower and upper bound CauSeq. -/
--- def mk (x : ℝ) (lb : CauSeq ℚ abs) (ub : CauSeq ℚ abs) (hlb : ∀n, lb n ≤ x) (hub : ∀n, ub n ≥ x)
---     (heq : lb ≈ ub) : ComputableℝSeq where
---   lub n := ⟨⟨lb.1 n, ub.1 n⟩, by let h := (hlb n).trans (hub n); norm_cast at h⟩
---   hcl := lb.2
---   hcu := ub.2
---   heq' := heq
---   hlub n := by
---     rw [Subtype.coe_eta, val_uniq' hlb hub heq]
---     exact ⟨hlb n, hub n⟩
-
 /-- Make a computable sequence for x from a separate lower and upper bound CauSeq. -/
 def mk (x : ℝ) (lub : ℕ → ℚInterval)
     (hcl : IsCauSeq abs (fun n ↦ (lub n).fst))
@@ -181,14 +170,6 @@ def mk (x : ℝ) (lub : ℕ → ℚInterval)
 
 theorem mk_val_eq_val : (mk x v h₁ h₂ h₃ h₄ h₅).val = x :=
   val_uniq (by convert h₃) (by convert h₄)
-
--- @[simp]
--- theorem mk_lb {x v h₁ h₂ h₃ h₄ h₅} : (mk x v h₁ h₂ h₃ h₄ h₅).lb = ⟨fun n ↦ (x.v n).fst, h₁⟩ :=
---   rfl
-
--- @[simp]
--- theorem mk_ub {x lb ub hlb hub heq} : (mk x lb ub hlb hub heq).ub = ub :=
---   rfl
 
 theorem lb_le_ub (x : ComputableℝSeq) : ∀n, x.lb n ≤ x.ub n :=
   fun n ↦ Rat.cast_le.mp (le_trans (x.hlb n) (x.hub n))
@@ -775,11 +756,6 @@ def ub_inv (x : ComputableℝSeq) (hnz : x.val ≠ 0) : CauSeq ℚ abs :=
               exact Hδ (H j hj).1.1 iK (H' j hj)
               ⟩⟩
 
--- /-- ub_inv applied to the negative of x is the negative of lb_inv. -/
--- theorem ub_inv_neg (x : ComputableℝSeq) (hnz : x.val ≠ 0) : x.ub_inv hnz = -(
---     (neg x).lb_inv (neg_ne_zero.mpr hnz)) :=
---   sorry
-
 /-- When applied to a `dropTilSigned`, `lb_inv` is a correct lower bound on x⁻¹. -/
 theorem lb_inv_correct {x : ComputableℝSeq} (hnz : x.val ≠ 0) : ∀n,
     (x.dropTilSigned hnz).lb_inv (dropTilSigned_nz hnz) n ≤ x.val⁻¹ := by
@@ -981,23 +957,28 @@ theorem mul_comm (x y : ComputableℝSeq) : x * y = y * x := by
     rw [← sup_assoc, ← sup_assoc]
     nth_rw 2 [sup_comm]
 
--- theorem mul_assoc (x y z : ComputableℝSeq) : (x * y) * z = x * (y * z) := by
---   ext n
---   · simp only [lb_mul, ub_mul, mul_lb, mul_ub]
---     sorry
---   · sorry
+/-TODO(mul_assoc)
+This theorem is annoying. When it's done, several other theorems follow too. They're all tagged TODO(mul_assoc).
 
--- theorem left_distrib (x y z : ComputableℝSeq) : x * (y + z) = x * y + x * z := by
---   ext n
---   <;> simp only [lb_mul, ub_mul, mul_lb, mul_ub, lb_add, ub_add]
---   · dsimp
---     simp only [_root_.left_distrib, add_inf, inf_add, inf_assoc]
---     -- congr 1
---     repeat sorry
---   · sorry
+theorem mul_assoc (x y z : ComputableℝSeq) : (x * y) * z = x * (y * z) := by
+  ext n
+  · simp only [lb_mul, ub_mul, mul_lb, mul_ub]
+    sorry
+  · sorry
 
--- theorem right_distrib (x y z : ComputableℝSeq) : (x + y) * z = x * z + y * z := by
---   rw [mul_comm, left_distrib, mul_comm, mul_comm z y]
+theorem left_distrib (x y z : ComputableℝSeq) : x * (y + z) = x * y + x * z := by
+  ext n
+  <;> simp only [lb_mul, ub_mul, mul_lb, mul_ub, lb_add, ub_add]
+  · dsimp
+    simp only [_root_.left_distrib, add_inf, inf_add, inf_assoc]
+    -- congr 1
+    repeat sorry
+  · sorry
+
+theorem right_distrib (x y z : ComputableℝSeq) : (x + y) * z = x * z + y * z := by
+  rw [mul_comm, left_distrib, mul_comm, mul_comm z y]
+
+-/
 
 theorem neg_mul (x y : ComputableℝSeq) : -x * y = -(x * y) := by
   ext
@@ -1038,10 +1019,11 @@ theorem neg_eq_of_add (x y : ComputableℝSeq) (h : x + y = 0) : -x = y := by
   a * a⁻¹ ≠ 1, and (a⁻¹)⁻¹ ≠ a. This typeclass collects all these facts together.
 
 TODO could include mul_inv_rev, inv_eq_of_mul, intCast_ofNat, intCast_negSucc. -/
--- class CompSeqClass (G : Type u) extends
---   CommSemiring G, DivInvMonoid G, HasDistribNeg G, SubtractionCommMonoid G, IntCast G, RatCast G
+/-TODO(mul_assoc)
+class CompSeqClass (G : Type u) extends
+  CommSemiring G, DivInvMonoid G, HasDistribNeg G, SubtractionCommMonoid G, IntCast G, RatCast G
+-/
 
---temporary one while `left_distrib` and `mul_assoc` are sorry'd out
 class CompSeqClass (G : Type u) extends
   AddCommMonoid G, CommMagma G, MulZeroOneClass G, Inv G, Div G,
   HasDistribNeg G, SubtractionCommMonoid G, NatCast G, IntCast G, RatCast G
@@ -1092,12 +1074,14 @@ instance instSeqCompSeqClass : CompSeqClass ComputableℝSeq := by
             Pi.sup_apply, Pi.inf_apply, sup_eq_right, inf_eq_left, lb_le_ub a n]
        }
 
--- @[simp]
--- theorem val_natpow (x : ComputableℝSeq) (n : ℕ): (x ^ n).val = x.val ^ n := by
---   induction n
---   · rw [pow_zero, val_one, pow_zero]
---   · rename_i ih
---     rw [pow_succ, pow_succ, val_mul, ih]
+/-TODO(mul_assoc)
+@[simp]
+theorem val_natpow (x : ComputableℝSeq) (n : ℕ): (x ^ n).val = x.val ^ n := by
+  induction n
+  · rw [pow_zero, val_one, pow_zero]
+  · rename_i ih
+    rw [pow_succ, pow_succ, val_mul, ih]
+-/
 
 end semiring
 

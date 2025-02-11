@@ -1,6 +1,8 @@
 import ComputableReal.ComputableReal
 
-/- Type class stating that `x:ℝ` has a ComputableℝSeq, i.e. that x is a computable number.-/
+/- Type class stating that `x:ℝ` has a ComputableℝSeq, i.e. that x is a computable number. Like
+`Decidable`, it carries data with it - even though (classically) we could prove that ever proposition
+is decidable, and every real is computable. -/
 class IsComputable (x : ℝ) : Type where
     seq : ComputableℝSeq
     prop : seq.val = x
@@ -61,9 +63,11 @@ instance instComputableDiv [hx : IsComputable x] [hy : IsComputable y] : IsCompu
   lift₂ _ (· / ·) ComputableℝSeq.val_div hx hy
 
 instance instComputableNatPow [hx : IsComputable x] (n : ℕ) : IsComputable (x ^ n) := by
-  --TODO: Redo this to use native powering on the ComputableℝSeq. This avoids more costly
-  -- (and inaccurate) interval multiplications. That will also turn it into exponentiation
-  -- by squaring.
+  /-TODO(mul_assoc)
+  Redo this to use native powering on the ComputableℝSeq. This avoids more costly
+  (and inaccurate) interval multiplications. That will also turn it into exponentiation
+  by squaring.
+  -/
   induction n
   · rw [pow_zero]
     infer_instance
