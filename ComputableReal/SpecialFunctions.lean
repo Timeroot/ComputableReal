@@ -4,58 +4,72 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import Mathlib.Analysis.SpecialFunctions.Log.Base
 import Mathlib.Tactic.Peel
 
-
--- theorem IsCauSeq_of_TendstoLocallyUniformly {fImpl : ℕ → ℚ → ℚ} {f : ℝ → ℝ}
---     (hf : TendstoLocallyUniformly (fun n x ↦ (fImpl n x : ℝ)) (fun (q : ℚ) ↦ f q) .atTop)
---     : ∀ (x : CauSeq ℚ abs), IsCauSeq abs (fun n ↦ fImpl n (x n)) := by
---   rintro ⟨x, hx⟩
---   simp [Metric.tendstoLocallyUniformly_iff, Real.dist_eq] at hf
---   intro ε hε
---   dsimp
---   obtain ⟨i₁, hi₁⟩ := hx _ (half_pos hε); clear hx
---   specialize hf _ (Rat.cast_pos.mpr (half_pos hε))
---   --??
---   obtain ⟨t, ht₁, a, ha⟩ := hf (x i₁); clear hf
---   let i := max a i₁
---   use i
---   intro j hj
---   -- specialize hi₁ _ (le_of_max_le_right hj)
---   specialize ha _ (le_of_max_le_left hj)
---   specialize ha (x i₁) (mem_of_mem_nhds ht₁)
---   sorry
-
--- theorem Real_mk_of_TendstoLocallyUniformly (fImpl : ℕ → ℚ → ℚ) (f : ℝ → ℝ)
---     (hf : TendstoLocallyUniformly (fun n x ↦ (fImpl n x : ℝ)) (fun (q : ℚ) ↦ f q) .atTop)
---     (x : CauSeq ℚ abs)
---     : Real.mk ⟨_, IsCauSeq_of_TendstoLocallyUniformly hf x⟩ = f (.mk x) := by
---   sorry
-
--- theorem IsCauSeq_of_Continuous {f : ℝ → ℝ} (hf : Continuous f)
---     : ∀ (x : CauSeq ℚ abs), IsCauSeq abs (fun n ↦ f (x n)) := by
---   rintro ⟨x, hx⟩
---   simp only [Metric.continuous_iff, Real.dist_eq] at hf
---   sorry
-
--- theorem Real_mk_of_Continuous {f : ℝ → ℝ} (hf : Continuous f) (x : CauSeq ℚ abs)
---     : CauSeq.lim ⟨_, IsCauSeq_of_Continuous hf x⟩ = f (.mk x) := by
---   sorry
-
-theorem cauchy_real_mk (x : CauSeq ℚ abs) : ∀ ε > 0, ∃ i, ∀ j ≥ i, |x j - Real.mk x| ≤ ε := by
+theorem cauchy_real_mk (x : CauSeq ℚ abs) : ∀ ε > 0, ∃ i, ∀ j ≥ i, |x j - Real.mk x| < ε := by
   intro ε hε
   obtain ⟨q, hq, hq'⟩ := exists_rat_btwn hε
   obtain ⟨i, hi⟩ := x.2.cauchy₂ (by simpa using hq)
   simp_rw [abs_sub_comm]
-  refine ⟨i, fun j hj ↦ Real.mk_near_of_forall_near ⟨i, fun k hk ↦ ?_⟩⟩
-  exact_mod_cast ((Rat.cast_strictMono (hi k hk j hj)).trans hq').le
+  refine ⟨i, fun j hj ↦ lt_of_le_of_lt (Real.mk_near_of_forall_near ⟨i, fun k hk ↦ ?_⟩) hq'⟩
+  exact_mod_cast (hi k hk j hj).le
+
+/-- This is very similar to the statement
+`TendstoLocallyUniformly (fun n x ↦ (F n x : ℝ)) (fun (q : ℚ) ↦ f q) .atTop`
+but that only uses neighborhoods within the rationals, which is a strictly
+weaker condition. This uses neighborhoods in the ambient space, the reals.
+-/
+def TendstoLocallyUniformlyWithout (F : ℕ → ℚ → ℚ) (f : ℝ → ℝ) : Prop :=
+  ∀ (ε : ℝ), 0 < ε →
+    ∀ (x : ℝ), ∃ t ∈ nhds x, ∃ a, ∀ (b : ℕ), a ≤ b → ∀ (y : ℚ), ↑y ∈ t →
+    |f y - ↑(F b y)| < ε
 
 theorem Real_mk_of_TendstoLocallyUniformly' (fImpl : ℕ → ℚ → ℚ) (f : ℝ → ℝ)
-    (hfImpl : TendstoLocallyUniformly (fun n x ↦ (fImpl n x : ℝ)) (fun (q : ℚ) ↦ f q) .atTop)
+    (hfImpl : TendstoLocallyUniformlyWithout (fImpl) (f))
     (hf : Continuous f)
     (x : CauSeq ℚ abs)
     : ∃ (h : IsCauSeq abs (fun n ↦ fImpl n (x n))), Real.mk ⟨_, h⟩ = f (.mk x) := by
+
   apply Real.of_near
+
+  simp only [Metric.continuous_iff, gt_iff_lt, Real.dist_eq] at hf
+
   rcases x with ⟨x, hx⟩
-  sorry
+  intro ε hε
+
+  obtain ⟨δ₁, hδ₁pos, hδ₁⟩ := hf (.mk ⟨x, hx⟩) _ (half_pos hε)
+  obtain ⟨i₁, hi₁⟩ := cauchy_real_mk ⟨x, hx⟩ δ₁ hδ₁pos
+
+  obtain ⟨i₂_nhd, hi₂_nhds, i₃, hi₃⟩ := hfImpl _ (half_pos hε) (.mk ⟨x, hx⟩)
+  obtain ⟨nl, nu, ⟨hnl, hnu⟩, hnd_sub⟩ := mem_nhds_iff_exists_Ioo_subset.mp hi₂_nhds
+  replace hnd_sub : ∀ (r : ℚ), nl < r ∧ r < nu → ↑r ∈ i₂_nhd := fun r a => hnd_sub a
+  replace hi₃ : ∀ (b : ℕ), i₃ ≤ b → ∀ (y : ℚ), nl < y ∧ y < nu → |f ↑y - ↑(fImpl b y)| < (ε / 2) := by
+    peel hi₃
+    exact fun h ↦ this (hnd_sub _ h)
+
+  set ε_nhd := min (nu - (.mk ⟨x,hx⟩)) ((.mk ⟨x,hx⟩) - nl) with hε_nhd
+  obtain ⟨i₄, hi₄⟩ := cauchy_real_mk ⟨x,hx⟩ (ε_nhd / 2) (by
+    rw [hε_nhd, gt_iff_lt, ← min_div_div_right (zero_le_two), lt_inf_iff]
+    constructor <;> linarith)
+
+  have hεn₁ : ε_nhd ≤ _ := inf_le_left
+  have hεn₂ : ε_nhd ≤ _ := inf_le_right
+
+  set i := max i₁ (max i₃ i₄) with hi
+  use i
+  intro j hj
+  simp only [hi, ge_iff_le, sup_le_iff] at hj
+
+  specialize hδ₁ _ (hi₁ j (by linarith))
+  specialize hi₄ j (by linarith)
+  specialize hi₃ j (by linarith) (x j) (by
+    constructor
+    · linarith [sub_le_of_abs_sub_le_left hi₄.le]
+    · linarith [sub_le_of_abs_sub_le_right hi₄.le]
+  )
+
+  calc |↑(fImpl j (x j)) - f (Real.mk ⟨x, hx⟩)| =
+    |(↑(fImpl j (x j)) - f ↑(x j)) + (f ↑(x j) - f (Real.mk ⟨x, hx⟩))| := by congr; ring_nf
+    _ ≤ |(↑(fImpl j (x j)) - f ↑(x j))| + |(f ↑(x j) - f (Real.mk ⟨x, hx⟩))| := abs_add _ _
+    _ < ε := by rw [abs_sub_comm]; linarith
 
 open scoped QInterval
 
@@ -78,8 +92,8 @@ def of_TendstoLocallyUniformly_Continuous
     (hImplDef : ∀ n q, fImpl n q = ⟨⟨fImpl_l n q.fst, fImpl_u n q.snd⟩,
       Rat.cast_le.mp ((hlb n q q.fst ⟨le_refl _, Rat.cast_le.mpr q.2⟩).trans
       (hub n q q.fst ⟨le_refl _, Rat.cast_le.mpr q.2⟩))⟩)
-    (hTLU_l : TendstoLocallyUniformly (fun n x ↦ ((fImpl_l n x) : ℝ)) (fun q ↦ f q) .atTop)
-    (hTLU_u : TendstoLocallyUniformly (fun n x ↦ ((fImpl_u n x) : ℝ)) (fun q ↦ f q) .atTop)
+    (hTLU_l : TendstoLocallyUniformlyWithout fImpl_l f)
+    (hTLU_u : TendstoLocallyUniformlyWithout fImpl_u f)
     (x : ComputableℝSeq) : ComputableℝSeq :=
   mk
   (x := f x.val)
@@ -96,7 +110,13 @@ def of_TendstoLocallyUniformly_Continuous
   )
   (hlb := fun n ↦ by simp_rw [hImplDef]; exact hlb n (x.lub n) x.val ⟨x.hlb n, x.hub n⟩)
   (hub := fun n ↦ by simp_rw [hImplDef]; exact hub n (x.lub n) x.val ⟨x.hlb n, x.hub n⟩)
-  (heq := sorry)
+  (heq := by
+    obtain ⟨_, h₁⟩ := Real_mk_of_TendstoLocallyUniformly' fImpl_l f hTLU_l hf x.lb
+    obtain ⟨_, h₂⟩ := Real_mk_of_TendstoLocallyUniformly' fImpl_u f hTLU_u hf x.ub
+    simp only [hImplDef, ← Real.mk_eq]
+    rw [lb_eq_ub] at h₁
+    exact h₁.trans h₂.symm
+  )
 
 namespace Sqrt
 
@@ -219,7 +239,9 @@ theorem sqrt_le_ub (x : ComputableℝSeq) (n : ℕ) : x.val.sqrt ≤ (sqrtq (x.l
     exact x.hub n
   · apply sqrt_ub_le_ub
 
-theorem sqrt_lb_le_lb_add (x : ComputableℝSeq) (n : ℕ) : Real.sqrt (x.lub n).fst ≤ (sqrtq (x.lub n) n).fst + (1/2^n) := by
+/-- This isn't actually true as written, oops. The error term depends on q -/
+theorem sqrt_lb_le_lb_add (x : ComputableℝSeq) (n : ℕ) :
+    Real.sqrt (x.lub n).fst ≤ (sqrtq (x.lub n) n).fst + (1/2^n) := by
   sorry
 
 theorem ub_sub_le_sqrt (x : ComputableℝSeq) (n : ℕ) : (sqrtq (x.lub n) n).snd - (1/2^n) ≤ x.val.sqrt := by
@@ -286,47 +308,24 @@ theorem lb_val_eq_sqrt (x : ComputableℝSeq) : ∃ (h : IsCauSeq abs (fun n ↦
 
   sorry
 
-theorem ub_val_eq_sqrt (x : ComputableℝSeq) : ∃ (h : IsCauSeq abs (fun n ↦ (sqrtq (x.lub n) n).snd)),
-    Real.mk ⟨_, h⟩ = x.val.sqrt := by
-  apply Real.of_near
-  sorry
-
-theorem lb_IsCauSeq (x : ComputableℝSeq) : IsCauSeq abs (fun n ↦ (sqrtq (x.lub n) n).fst) :=
-  (lb_val_eq_sqrt x).rec (fun w _ ↦ w)
-
-theorem ub_IsCauSeq (x : ComputableℝSeq) : IsCauSeq abs (fun n ↦ (sqrtq (x.lub n) n).snd) :=
-  (ub_val_eq_sqrt x).rec (fun w _ ↦ w)
-
--- def sqrt (x : ComputableℝSeq) : ComputableℝSeq :=
---   mk (x.val.sqrt)
---   (lub := fun n ↦ sqrtq (x.lub n) n)
---   (hlb := lb_le_sqrt x)
---   (hub := sqrt_le_ub x)
---   (hcl := lb_IsCauSeq x)
---   (hcu := ub_IsCauSeq x)
---   (heq := by
---     rw [← Real.mk_eq]
---     obtain ⟨_,h₁⟩ := lb_val_eq_sqrt x
---     obtain ⟨_,h₂⟩ := ub_val_eq_sqrt x
---     exact h₁.trans h₂.symm)
-
 theorem wanted_1 :
-    TendstoLocallyUniformly
+    TendstoLocallyUniformlyWithout
     (fun n (x : ℚ) => ↑((fun n q =>
       mkRat (Int.sqrt (q.num * 10 ^ n)) ((q.den * 10 ^ n).sqrt + 1)) n x))
-    (fun q => √↑q) Filter.atTop := by
+    (fun q => √↑q) := by
   sorry
 
 theorem wanted_2 :
-    TendstoLocallyUniformly
+    TendstoLocallyUniformlyWithout
     (fun n (x : ℚ) => ↑((fun n q =>
       if q ≤ 0 then 0 else mkRat (Int.sqrt (q.num * 10 ^ n) + 1) (q.den * 10 ^ n).sqrt) n x))
-    (fun q => √↑q) Filter.atTop := by
+    (fun q => √↑q) := by
   sorry
 
 def sqrt : ComputableℝSeq → ComputableℝSeq :=
   of_TendstoLocallyUniformly_Continuous
   (f := Real.sqrt)
+  (hf := Real.continuous_sqrt)
   (fImpl := fun n q ↦ sqrtq q n)
   (fImpl_l := fun n q ↦ mkRat (Int.sqrt (q.num * 10^n)) ((q.den * 10^n).sqrt + 1))
   (fImpl_u := fun n q ↦ if q ≤ 0 then 0 else mkRat (Int.sqrt (q.num * 10^n) + 1) (q.den * 10^n).sqrt)
@@ -342,7 +341,6 @@ def sqrt : ComputableℝSeq → ComputableℝSeq :=
   )
   (hTLU_l := wanted_1)
   (hTLU_u := wanted_2)
-  (hf := Real.continuous_sqrt)
   (hlb := by
     intro n ⟨⟨q₁, q₂⟩, hq⟩ x ⟨hx₁, hx₂⟩
     have := lb_le_sqrt_lb ⟨⟨q₁, q₂⟩, hq⟩ n
