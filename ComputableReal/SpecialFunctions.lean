@@ -75,8 +75,10 @@ open scoped QInterval
 
 namespace Rat
 
-def toDecimal (q : ℚ) (prec : ℕ := 20):=
-  (q.floor.repr).append <| ".".append <| (10^prec * (q - q.floor)).floor.repr.leftpad prec '0'
+def toDecimal (q : ℚ) (prec : ℕ := 20) :=
+  let p : ℚ → String := fun q ↦
+    (q.floor.repr).append <| ".".append <| (10^prec * (q - q.floor)).floor.repr.leftpad prec '0'
+  if q < 0 then "-".append (p (-q)) else if q = 0 then "0" else p q
 
 end Rat
 
@@ -338,8 +340,117 @@ theorem sqrt_lb_le_lb_add (q : ℚ) (n : ℕ) :
 theorem ub_sub_le_sqrt (q : ℚ) (n : ℕ) :
     (if q ≤ 0 then 0 else
       mkRat (Int.sqrt (q.num * 4 ^ n) + 1) (q.den * 4 ^ n).sqrt
-    ) - 2 * Real.sqrt q / 2^n ≤ Real.sqrt q := by
-  sorry
+    ) - 7 * Real.sqrt q / 2^n ≤ Real.sqrt q := by
+  split_ifs with h
+  · rify at h
+    simp [Real.sqrt_eq_zero'.mpr h]
+
+  push_neg at h
+  replace h : 0 < q.num := Rat.num_pos.mpr h
+  nth_rewrite 4 [← Rat.mkRat_self q]
+  nth_rewrite 3 [← Rat.mkRat_self q]
+  simp only [Rat.mkRat_eq_div, Rat.cast_div, Rat.cast_intCast, Rat.cast_natCast, Nat.cast_nonneg,
+    Real.sqrt_div', Nat.cast_add, Nat.cast_one, Rat.cast_add, Rat.cast_one, one_div]
+  have hd := Rat.den_pos q
+  generalize q.num = x, q.den = y at *
+  clear q
+
+  obtain ⟨z,hz⟩ := Int.eq_ofNat_of_zero_le h.le
+  subst x
+
+  conv_lhs =>
+    enter [1,1,1,1]
+    tactic => norm_cast
+  simp only [Int.cast_add, Int.cast_natCast, Int.cast_one]
+
+  replace h : 1 ≤ √↑z := Real.one_le_sqrt.mpr (by norm_cast at h ⊢)
+  have h2pow : (1 : ℝ) ≤ 2 ^ n := by exact_mod_cast Nat.one_le_two_pow
+
+  have h₁ := @Real.floor_real_sqrt_eq_nat_sqrt (z * 4^n)
+  rify at h₁
+  rw [← h₁, ← Int.self_sub_fract]
+  clear h₁
+  have h₄ := Int.fract_lt_one √(↑z * 4 ^ n)
+  have h₅ := Int.fract_nonneg √(↑z * 4 ^ n)
+  rw [sub_add_comm]
+  rw [← sub_sub_cancel 1 (Int.fract _)] at h₄ h₅
+  generalize 1 - Int.fract √(↑z * 4 ^ n) = ε₂ at *
+  simp only [sub_lt_self_iff, sub_nonneg] at h₄ h₅
+
+  --Have to special-case the y=1 case. Otherwise the denominator 1 / (√y * 2^n - ε₁) looks like it
+  -- "could be" arbitrarily close to zero, and so cause a big blowup in error.
+  by_cases hd' : y = 1
+  · subst y
+    simp only [Int.cast_add, Int.cast_one, one_mul, Nat.cast_one, Real.sqrt_one, div_one,
+      tsub_le_iff_right, ge_iff_le]
+    rw [show (4 ^ n = ((2 ^ n) ^ 2 : ℕ)) by rw [Nat.pow_right_comm], Nat.sqrt_eq']
+    rw [Real.sqrt_mul', show (4 ^ n = ((2 ^ n) ^ 2 : ℝ)) by norm_cast; rw [Nat.pow_right_comm], Real.sqrt_sq,
+      Nat.cast_pow, Nat.cast_ofNat, add_div]
+    rotate_left; positivity; positivity
+    simp only [isUnit_iff_ne_zero, ne_eq, pow_eq_zero_iff', OfNat.ofNat_ne_zero, false_and,
+      not_false_eq_true, IsUnit.mul_div_cancel_right, _root_.add_comm ( _ / _ ), add_le_add_iff_left]
+    exact div_le_div_of_nonneg_right (by linarith) (by positivity)
+
+  replace hd' : 2 ≤ y := by omega
+  replace hd : 1 ≤ √↑y := Real.one_le_sqrt.mpr (Nat.one_le_cast.mpr hd)
+
+  have h₁ := @Real.floor_real_sqrt_eq_nat_sqrt (y * 4^n)
+  rify at h₁
+  rw [← h₁, ← Int.self_sub_fract]
+  clear h₁
+  have h₂ := Int.fract_lt_one √(↑y * 4 ^ n)
+  have h₃ := Int.fract_nonneg √(↑y * 4 ^ n)
+  generalize Int.fract √(↑y * 4 ^ n) = ε₁ at *
+
+  rw [Real.sqrt_mul', Real.sqrt_mul',
+      show (4 ^ n = ((2 ^ n) ^ 2 : ℝ)) by norm_cast; rw [Nat.pow_right_comm]]
+  rotate_left; positivity; positivity
+  simp only [Nat.ofNat_nonneg, pow_nonneg, Real.sqrt_sq]
+
+  rw [_root_.add_comm ε₂, add_div, sub_eq_add_neg _ ε₁, denom_err]
+  rotate_left
+  · positivity
+  · nlinarith
+
+  rw [show √↑z * 2 ^ n / (√↑y * 2 ^ n) = √↑z / √↑y by field_simp; ring_nf]
+  simp only [_root_.mul_neg, neg_div, sub_neg_eq_add]
+  suffices (√↑z / √↑y * ε₁ / (√↑y * 2 ^ n + -ε₁) ≤ 3 * (√↑z / √↑y / 2 ^ n))
+    ∧ (ε₂ / (√↑y * 2 ^ n + -ε₁) ≤ 4 * (√↑z / √↑y / 2 ^ n)) by
+    rcases this
+    rw [← mul_div 7]
+    linarith
+
+  have hi₁ : 1 /3 ≤ √↑y - ε₁ := by
+    suffices 4 / 3 ≤ √↑y by linarith
+    trans √2
+    · rw [Real.le_sqrt' (by positivity)]
+      norm_num
+    · exact Real.sqrt_le_sqrt (Nat.ofNat_le_cast.mpr hd')
+  have hi₂ : 0 < √↑y * 2 ^ n - ε₁ := by
+    apply lt_of_lt_of_le (show 0 < (1 / 3 : ℝ) by norm_num)
+    apply hi₁.trans <| sub_le_sub_right (le_mul_of_one_le_right (by positivity) h2pow) _
+
+  constructor
+  · ring_nf
+    rw [mul_assoc, mul_assoc _ _ 3, mul_le_mul_iff_of_pos_left (by positivity)]
+    apply mul_le_of_le_one_of_le' h₂.le ?_ (by positivity) (by positivity)
+    field_simp
+    rw [div_le_div_iff₀ hi₂ (by positivity)]
+    calc (_ : ℝ) ≤ 3 * (1/3 * (2^n)) := by ring_nf; rfl
+      _ ≤ 3 * ((√↑y - ε₁) * 2 ^ n) :=
+        mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_right hi₁ (by positivity)) zero_le_three
+      _ = 3 * (√↑y * 2 ^ n - ε₁ * 2 ^ n) := by ring_nf
+      _ ≤ 3 * (√↑y * 2 ^ n - ε₁) :=
+        mul_le_mul_of_nonneg_left (tsub_le_tsub_left (le_mul_of_one_le_right h₃ h2pow) _) (by positivity)
+  · rw [div_div, mul_div, ← sub_eq_add_neg]
+    rw [div_le_div_iff₀ hi₂ (by positivity)]
+    apply mul_le_of_le_one_of_le' h₅ ?_ (by positivity) (by positivity)
+    conv_rhs =>
+      equals (√↑z * √↑y * 2 ^ n) + √↑z * (3 * √↑y * 2 ^ n - 4 * ε₁) =>
+        ring_nf
+    suffices 0 ≤ 3 * √↑y * 2 ^ n - 4 * ε₁ by nlinarith
+    have : √↑y ≤ √↑y * 2 ^ n := le_mul_of_one_le_right (by positivity) h2pow
+    linarith
 
 theorem TLUW_lower : TendstoLocallyUniformlyWithout
     (fun n (x : ℚ) => ↑((fun n q =>
@@ -397,7 +508,49 @@ theorem TLUW_upper : TendstoLocallyUniformlyWithout
   rw [TendstoLocallyUniformlyWithout]
   intro ε hε x
   dsimp
-  sorry
+  rcases lt_or_le x 0 with h|h
+  · use Set.Iic 0, Iic_mem_nhds h, 0
+    intro b _ y hy
+    change y ≤ (0:ℝ) at hy
+    have hy' := Rat.cast_nonpos.mp hy
+    have h₂ : Int.sqrt (y.num * 4 ^ b) = 0 := by
+      rw [Int.sqrt.eq_1, Int.ofNat_eq_zero, Nat.sqrt_eq_zero, Int.toNat_eq_zero]
+      exact Int.mul_nonpos_of_nonpos_of_nonneg (Rat.num_nonpos.mpr <| hy') (by positivity)
+    simp [Real.sqrt_eq_zero'.mpr hy, h₂, hε, hy']
+  · set tm := max (2 * x) 1
+    have htm₀ : 0 < tm := by positivity
+    have htm : x < tm := by
+      by_cases 0 < x
+      · exact lt_sup_of_lt_left (by linarith)
+      · exact lt_sup_of_lt_right (by linarith)
+    use Set.Ioo (-1) tm, Ioo_mem_nhds (by linarith) htm
+    set ε' := (ε / (7 * tm.sqrt)) with hε'
+    set a := Int.clog 2 (1 / ε') with ha
+    use a.toNat
+    rintro b hb q ⟨hq₁, hq₂⟩
+    by_cases hq₃ : q ≤ 0
+    · have h₂ : Int.sqrt (q.num * 4 ^ b) = 0 := by
+        rw [Int.sqrt.eq_1, Int.ofNat_eq_zero, Nat.sqrt_eq_zero, Int.toNat_eq_zero]
+        exact Int.mul_nonpos_of_nonpos_of_nonneg (Rat.num_nonpos.mpr hq₃) (by positivity)
+      simp [Real.sqrt_eq_zero'.mpr (Rat.cast_nonpos.mpr hq₃), h₂, hε, hq₃]
+    have hb₂ := ub_sub_le_sqrt q b
+    rw [if_neg hq₃] at hb₂ ⊢
+    push_neg at hq₃
+    suffices 7 * √↑q / 2 ^ b < ε by
+      have hb₁ := rsqrt_le_boundedSqrt q b 4 (by norm_num)
+      rw [Nat.cast_ofNat] at hb₁
+      rw [abs_sub_lt_iff]
+      constructor <;> linarith
+    replace hb : Int.clog 2 (1 / ε') ≤ b := Int.toNat_le.mp hb
+    replace hb : 2 ^ (Int.clog 2 (1 / ε')) ≤ (2 : ℝ) ^ (b : ℤ) := zpow_le_zpow_right₀ (one_le_two) hb
+    replace hb := le_trans (Int.self_le_zpow_clog Nat.one_lt_two (1 / ε')) hb
+    rw [hε', zpow_natCast] at hb
+    have hqtm := Real.sqrt_lt_sqrt (Rat.cast_nonneg.mpr hq₃.le) hq₂
+    have hq0 := Real.sqrt_pos_of_pos (Rat.cast_pos.mpr hq₃)
+    simp only [one_div, inv_div] at hb
+    rw [div_le_iff₀ (by positivity)] at hb
+    rw [div_lt_iff₀ (by positivity), _root_.mul_comm ε]
+    linarith
 
 def sqrt : ComputableℝSeq → ComputableℝSeq :=
   of_TendstoLocallyUniformly_Continuous
@@ -448,7 +601,7 @@ instance instComputableSqrtTwoAddSeries (x : ℝ) [hx : IsComputable x] (n : ℕ
     IsComputable (Real.sqrtTwoAddSeries x n) :=
   n.rec hx (fun _ _ ↦ instComputableSqrt _)
 
-example : Real.sqrt (1 + 1/4) > 2 + Real.sqrt 3 - Real.sqrt 7 := by
+example : Real.sqrt (1 + 1/4) > Real.sqrt (2 + Real.sqrt 3) / (Real.sqrt 7 - 1/2) := by
   native_decide
 
 end Sqrt
@@ -458,15 +611,16 @@ section Pi
 /-- See theorem Real.pi_gt_sqrtTwoAddSeries in Mathlib -/
 def pi_lb (n : ℕ) : ℚ :=
   let TwoSubSqrt2SeriesN := (inferInstance : IsComputable (Real.sqrt (2 - Real.sqrtTwoAddSeries 0 n))).seq
-  2 ^ (n + 1) * TwoSubSqrt2SeriesN.lb n
+  2 ^ (n + 1) * TwoSubSqrt2SeriesN.lb (2 * n)
 
 /-- See theorem Real.pi_gt_sqrtTwoAddSeries in Mathlib -/
 def pi_ub (n : ℕ) : ℚ :=
   let TwoSubSqrt2SeriesN := (inferInstance : IsComputable (Real.sqrt (2 - Real.sqrtTwoAddSeries 0 n))).seq
-  2 ^ (n + 1) * TwoSubSqrt2SeriesN.ub n + 1 / 4 ^ n
+  2 ^ (n + 1) * TwoSubSqrt2SeriesN.ub (2 * n) + 1 / 4 ^ n
 
---100ms for 10^-40 precision
--- #time #eval! Rat.toDecimal (prec := 40) (pi_ub 100 - 3.14159265358979323846264338327950288419716939937510)
+-- 60ms for 10^-40 precision
+-- #time #eval! Rat.toDecimal (prec := 40) (pi_ub 65 - 3.14159265358979323846264338327950288419716939937510)
+-- #time #eval! Rat.toDecimal (prec := 40) (pi_lb 65 - 3.14159265358979323846264338327950288419716939937510)
 
 end Pi
 
