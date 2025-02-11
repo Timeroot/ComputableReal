@@ -118,6 +118,12 @@ def of_TendstoLocallyUniformly_Continuous
     exact h₁.trans h₂.symm
   )
 
+@[simp]
+theorem val_of_TendstoLocallyUniformly_Continuous (f) (hf : Continuous f) (fI fl fu h₁ h₂ h₃ h₄ h₅ a)
+  : (of_TendstoLocallyUniformly_Continuous hf fI fl fu h₁ h₂ h₃ h₄ h₅ a).val =
+    f a.val :=
+  ComputableℝSeq.mk_val_eq_val
+
 namespace Sqrt
 
 theorem boundedSqrt_le_rsqrt (y : ℚ) (n : ℕ) (b : ℕ) (hb : 0 < b):
@@ -211,7 +217,7 @@ def boundedSqrt (x : ℚInterval) (n : ℕ) (b : ℕ) (hb : 0 < b) : ℚInterval
 
 def sqrtq (x : ℚInterval) (n : ℕ) : ℚInterval :=
   --shortcut with an if to slightly speed things up
-  if x.snd ≤ 0 then 0 else boundedSqrt x n 10 (by norm_num)
+  if x.snd ≤ 0 then 0 else boundedSqrt x n 4 (by norm_num)
 
 theorem lb_le_sqrt_lb (q : ℚInterval) (n : ℕ) : (sqrtq q n).fst ≤ Real.sqrt q.fst := by
   rw [sqrtq]
@@ -220,10 +226,10 @@ theorem lb_le_sqrt_lb (q : ℚInterval) (n : ℕ) : (sqrtq q n).fst ≤ Real.sqr
   · apply boundedSqrt_le_rsqrt q.toProd.1
     norm_num
 
-theorem lb_le_sqrt (x : ComputableℝSeq) (n : ℕ) : (sqrtq (x.lub n) n).fst ≤ x.val.sqrt := by
-  trans Real.sqrt (x.lub n).fst
-  · apply lb_le_sqrt_lb
-  · exact Real.sqrt_le_sqrt (x.hlb n)
+-- theorem lb_le_sqrt (x : ComputableℝSeq) (n : ℕ) : (sqrtq (x.lub n) n).fst ≤ x.val.sqrt := by
+--   trans Real.sqrt (x.lub n).fst
+--   · apply lb_le_sqrt_lb
+--   · exact Real.sqrt_le_sqrt (x.hlb n)
 
 theorem sqrt_ub_le_ub (q : ℚInterval) (n : ℕ) : Real.sqrt q.snd ≤ (sqrtq q n).snd := by
   rw [sqrtq]
@@ -233,93 +239,127 @@ theorem sqrt_ub_le_ub (q : ℚInterval) (n : ℕ) : Real.sqrt q.snd ≤ (sqrtq q
   · apply rsqrt_le_boundedSqrt q.toProd.2
     norm_num
 
-theorem sqrt_le_ub (x : ComputableℝSeq) (n : ℕ) : x.val.sqrt ≤ (sqrtq (x.lub n) n).snd  := by
-  trans Real.sqrt (x.lub n).toProd.2
-  · apply Real.sqrt_le_sqrt
-    exact x.hub n
-  · apply sqrt_ub_le_ub
+-- theorem sqrt_le_ub (x : ComputableℝSeq) (n : ℕ) : x.val.sqrt ≤ (sqrtq (x.lub n) n).snd  := by
+--   trans Real.sqrt (x.lub n).toProd.2
+--   · apply Real.sqrt_le_sqrt
+--     exact x.hub n
+--   · apply sqrt_ub_le_ub
 
-/-- This isn't actually true as written, oops. The error term depends on q -/
-theorem sqrt_lb_le_lb_add (x : ComputableℝSeq) (n : ℕ) :
-    Real.sqrt (x.lub n).fst ≤ (sqrtq (x.lub n) n).fst + (1/2^n) := by
+/-- This equality is a generally true way to "split a denominator", but is particularly useful
+as an approximation when ε is small compared to y, and we wish to approximate
+`x / (y + ε)` with `x / y`. -/
+lemma denom_err (x y ε : ℝ) (hy : y ≠ 0) (hyε : y + ε ≠ 0 ) :
+    x / (y + ε) = x / y - (x / y) * ε / (y + ε) := by
+  field_simp
+  ring_nf
+
+theorem sqrt_lb_le_lb_add (q : ℚ) (n : ℕ) :
+    Real.sqrt q ≤ (sqrtq q n).fst + 2 * Real.sqrt q / 2^n := by
+  rw [sqrtq, boundedSqrt]
+  split_ifs with h
+  · have h₁ : √↑q = 0 := Real.sqrt_eq_zero'.mpr (Rat.cast_nonpos.mpr h)
+    simp [h₁]
+  · dsimp
+    clear h
+    nth_rewrite 4 [← Rat.mkRat_self q]
+    nth_rewrite 1 [← Rat.mkRat_self q]
+    simp only [Rat.mkRat_eq_div, Rat.cast_div, Rat.cast_intCast, Rat.cast_natCast, Nat.cast_nonneg,
+      Real.sqrt_div', Nat.cast_add, Nat.cast_one, Rat.cast_add, Rat.cast_one, one_div]
+    simp [Rat.cast, QInterval.instRatCastQInterval, NonemptyInterval.toProd]
+    have hd := Rat.den_pos q
+    generalize q.num = x, q.den = y at *
+    clear q
+    rcases le_or_lt x 0 with h|h
+    · have h₁ : √↑x = 0 := by
+        rw [Real.sqrt_eq_zero']
+        exact Int.cast_nonpos.mpr h
+      have h₂ : Int.sqrt (x * 4 ^ n) = 0 := by
+        rw [Int.sqrt.eq_1, Int.ofNat_eq_zero, Nat.sqrt_eq_zero, Int.toNat_eq_zero]
+        exact Int.mul_nonpos_of_nonpos_of_nonneg h (by positivity)
+      simp [h₁, h₂]
+    · obtain ⟨z,hz⟩ := Int.eq_ofNat_of_zero_le h.le
+      subst x
+      conv_rhs =>
+        enter [1,1,1,1]
+        tactic => norm_cast
+      rw [Int.sqrt_natCast]
+      simp only [Int.cast_natCast]
+      /-
+      x/(y+ε) = (x/y) - (x/y - x/(y+ε)) = (x/y) - x*(1/y - 1/(y+ε)) = x/y - x*((y+ε) - y)/(y*(y+ε))
+       = x/y - (x/y)*(ε/(y+ε)). The error is thus at most (x/y)*ε/(y+ε), which is upper bounded by
+       ≤ (sqrt q) * 1 / 4^n.
+      Similarly for the numerator.
+      -/
+      have h₁ := @Real.floor_real_sqrt_eq_nat_sqrt (z * 4^n)
+      rify at h₁
+      rw [← h₁, ← Int.self_sub_fract]
+      clear h₁
+      have h₂ := Int.fract_lt_one √(↑z * 4 ^ n)
+      have h₃ := Int.fract_nonneg √(↑z * 4 ^ n)
+      generalize Int.fract √(↑z * 4 ^ n) = ε₁ at *
+
+      have h₁ := @Real.floor_real_sqrt_eq_nat_sqrt (y * 4^n)
+      rify at h₁
+      rw [← h₁, ← Int.self_sub_fract]
+      clear h₁
+      have h₄ := Int.fract_lt_one √(↑y * 4 ^ n)
+      have h₅ := Int.fract_nonneg √(↑y * 4 ^ n)
+      rw [sub_add_comm]
+      rw [← sub_sub_cancel 1 (Int.fract _)] at h₄ h₅
+      generalize 1 - Int.fract √(↑y * 4 ^ n) = ε₂ at *
+      simp only [sub_lt_self_iff, sub_nonneg] at h₄ h₅
+
+      rw [Real.sqrt_mul', Real.sqrt_mul',
+        show (4 ^ n = ((2 ^ n) ^ 2 : ℝ)) by norm_cast; rw [Nat.pow_right_comm]]
+      rotate_left; positivity; positivity
+      simp only [Nat.ofNat_nonneg, pow_nonneg, Real.sqrt_sq]
+
+      rw [_root_.add_comm ε₂, sub_div, denom_err]
+      rotate_left; positivity; positivity
+
+      rw [show √↑z * 2 ^ n / (√↑y * 2 ^ n) = √↑z / √↑y by field_simp; ring_nf]
+      suffices (√↑z / √↑y * ε₂ / (√↑y * 2 ^ n + ε₂) ≤ √↑z / √↑y / 2 ^ n)
+        ∧ (ε₁ / (√↑y * 2 ^ n + ε₂) ≤ √↑z / √↑y / 2 ^ n) by
+        rcases this
+        rw [← mul_div 2]
+        linarith
+
+      replace h : 1 ≤ √↑z := Real.one_le_sqrt.mpr (by norm_cast at h ⊢)
+      replace hd : 1 ≤ √↑y := Real.one_le_sqrt.mpr (Nat.one_le_cast.mpr hd)
+
+      constructor
+      · apply div_le_div₀
+        · positivity
+        · exact mul_le_of_le_one_right (by positivity) h₅
+        · positivity
+        · trans √↑y * 2 ^ n
+          · exact le_mul_of_one_le_left (by positivity) hd
+          · exact le_add_of_nonneg_right h₄.le
+      · rw [div_div]
+        apply div_le_div₀
+        · positivity
+        · exact h₂.le.trans h
+        · positivity
+        · exact le_add_of_nonneg_right h₄.le
+
+theorem ub_sub_le_sqrt (x : ComputableℝSeq) (n : ℕ) :
+    (sqrtq (x.lub n) n).snd - (1/2^n) ≤ x.val.sqrt := by
   sorry
 
-theorem ub_sub_le_sqrt (x : ComputableℝSeq) (n : ℕ) : (sqrtq (x.lub n) n).snd - (1/2^n) ≤ x.val.sqrt := by
-  sorry
-
-theorem lb_val_eq_sqrt_some (y : ℚInterval) : ∃ (h : IsCauSeq abs (fun n ↦ (sqrtq y n).fst)),
-    Real.mk ⟨_, h⟩ = Real.sqrt y.fst := by
-  apply Real.of_near
-  /-
-  have hc : ∀ (y : ℚInterval), IsCauSeq abs (fun n ↦ (Sqrt.lub y n).fst) := by
-    --todo: pull out into own lemma
-    intro y ε hε
-    use (Int.clog 2 (1 / ε)).toNat
-    intro j hj
-    have hclog := Int.self_le_zpow_clog (Nat.one_lt_two) (1 / ε)
-    sorry
-  -/
-  sorry
-
-theorem lb_val_eq_sqrt (x : ComputableℝSeq) : ∃ (h : IsCauSeq abs (fun n ↦ (sqrtq (x.lub n) n).fst)),
-    Real.mk ⟨_, h⟩ = x.val.sqrt := by
-  /-
-  fun n ↦ (x.lub n).fst   approaches x.val
-  fun n ↦ Real.sqrt (x.lub n).fst    approaches Real.sqrt (x.val)
-
-  ∀ y, (sqrtq y).fst   approaches Real.sqrt (y.fst) with error as 1/2^n
-  -/
-
-  apply Real.of_near
-  intro ε hε
-
-  obtain ⟨ε', hε', hε₂⟩ := exists_rat_btwn hε
-  rw [Rat.cast_pos] at hε'
-  suffices ∃ i, ∀ j ≥ i, |↑(sqrtq (x.lub j) j).toProd.1 - √x.val| < ε' by
-    peel this
-    exact gt_trans hε₂ this
-  clear ε hε hε₂
-
-  have heq₁ : Real.mk ⟨_, x.hcl⟩ = x.val := x.val_eq_mk_lb.symm
-  have heq₂ : ∀ (i : ℕ), Real.mk ⟨fun n => (sqrtq (x.lub i) n).toProd.1,
-      (lb_val_eq_sqrt_some (x.lub i)).rec (fun w _ ↦ w)⟩ = Real.sqrt (.mk ⟨_, x.hcl⟩)  := by
-    sorry
-  rw [heq₁] at heq₂
-  clear heq₁
-
-  obtain ⟨i₁, hi₁⟩ := x.hcl (ε' / 2) (half_pos hε')
-
-  obtain ⟨hc, hc₂⟩ := lb_val_eq_sqrt_some (x.lub i₁)
-  have hc₃ := cauchy_real_mk ⟨_, hc⟩
-  clear hc₂
-
-  obtain ⟨i₂, hi₂⟩ := hc₃ (ε' / 2) (half_pos (Rat.cast_pos.mpr hε'))
-  clear hc₃
-
-  dsimp at hi₁ hi₂
-  use max i₁ i₂
-  intro j hj
-  specialize hi₁ j (le_of_max_le_left hj)
-  specialize hi₂ j (le_of_max_le_right hj)
-  clear hj i₂
-
-  rw [heq₂ i₁] at hi₂
-  clear heq₂
-
-  sorry
-
-theorem wanted_1 :
-    TendstoLocallyUniformlyWithout
+theorem TLUW_lower : TendstoLocallyUniformlyWithout
     (fun n (x : ℚ) => ↑((fun n q =>
-      mkRat (Int.sqrt (q.num * 10 ^ n)) ((q.den * 10 ^ n).sqrt + 1)) n x))
+      mkRat (Int.sqrt (q.num * 4 ^ n)) ((q.den * 4 ^ n).sqrt + 1)) n x))
     (fun q => √↑q) := by
+  rw [TendstoLocallyUniformlyWithout]
+  intro ε hε x
   sorry
 
-theorem wanted_2 :
-    TendstoLocallyUniformlyWithout
+theorem TLUW_upper : TendstoLocallyUniformlyWithout
     (fun n (x : ℚ) => ↑((fun n q =>
-      if q ≤ 0 then 0 else mkRat (Int.sqrt (q.num * 10 ^ n) + 1) (q.den * 10 ^ n).sqrt) n x))
+      if q ≤ 0 then 0 else mkRat (Int.sqrt (q.num * 4 ^ n) + 1) (q.den * 4 ^ n).sqrt) n x))
     (fun q => √↑q) := by
+  rw [TendstoLocallyUniformlyWithout]
+  intro ε hε x
   sorry
 
 def sqrt : ComputableℝSeq → ComputableℝSeq :=
@@ -327,26 +367,25 @@ def sqrt : ComputableℝSeq → ComputableℝSeq :=
   (f := Real.sqrt)
   (hf := Real.continuous_sqrt)
   (fImpl := fun n q ↦ sqrtq q n)
-  (fImpl_l := fun n q ↦ mkRat (Int.sqrt (q.num * 10^n)) ((q.den * 10^n).sqrt + 1))
-  (fImpl_u := fun n q ↦ if q ≤ 0 then 0 else mkRat (Int.sqrt (q.num * 10^n) + 1) (q.den * 10^n).sqrt)
+  (fImpl_l := fun n q ↦ mkRat (Int.sqrt (q.num * 4^n)) ((q.den * 4^n).sqrt + 1))
+  (fImpl_u := fun n q ↦ if q ≤ 0 then 0 else mkRat (Int.sqrt (q.num * 4^n) + 1) (q.den * 4^n).sqrt)
   (hImplDef := by
     rintro n ⟨⟨q₁, q₂⟩, hq⟩
     dsimp [sqrtq]
     split_ifs
-    · have h : Int.sqrt (q₁.num * 10 ^ n) = 0 := by
+    · have h : Int.sqrt (q₁.num * 4 ^ n) = 0 := by
         rw [Int.sqrt.eq_1, Int.ofNat_eq_zero, Nat.sqrt_eq_zero, Int.toNat_eq_zero]
         exact Int.mul_nonpos_of_nonpos_of_nonneg (Rat.num_nonpos.mpr (by linarith)) (by positivity)
       simp [h]; rfl
     · rfl
   )
-  (hTLU_l := wanted_1)
-  (hTLU_u := wanted_2)
+  (hTLU_l := TLUW_lower) (hTLU_u := TLUW_upper)
   (hlb := by
     intro n ⟨⟨q₁, q₂⟩, hq⟩ x ⟨hx₁, hx₂⟩
     have := lb_le_sqrt_lb ⟨⟨q₁, q₂⟩, hq⟩ n
     rw [sqrtq, boundedSqrt] at this
     split_ifs at this with h
-    · have h0 : Int.sqrt (q₁.num * 10 ^ n) = 0 := by
+    · have h0 : Int.sqrt (q₁.num * 4 ^ n) = 0 := by
         rw [Int.sqrt.eq_1, Int.ofNat_eq_zero, Nat.sqrt_eq_zero, Int.toNat_eq_zero]
         exact Int.mul_nonpos_of_nonpos_of_nonneg (Rat.num_nonpos.mpr (by linarith)) (by positivity)
       simp [h0]
@@ -366,7 +405,7 @@ def sqrt : ComputableℝSeq → ComputableℝSeq :=
   )
 
 instance instComputableSqrt (x : ℝ) [hx : IsComputable x] : IsComputable (x.sqrt) :=
-  .lift (Real.sqrt) sqrt (fun v ↦ val_eq_mk_lb (sqrt _) ▸ (lb_val_eq_sqrt v).rec (fun _ h ↦ h)) hx
+  .lift (Real.sqrt) sqrt (by apply val_of_TendstoLocallyUniformly_Continuous) hx
 
 instance instComputableSqrtTwoAddSeries (x : ℝ) [hx : IsComputable x] (n : ℕ) :
     IsComputable (Real.sqrtTwoAddSeries x n) :=
