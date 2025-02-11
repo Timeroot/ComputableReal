@@ -254,96 +254,91 @@ lemma denom_err (x y ε : ℝ) (hy : y ≠ 0) (hyε : y + ε ≠ 0 ) :
   ring_nf
 
 theorem sqrt_lb_le_lb_add (q : ℚ) (n : ℕ) :
-    Real.sqrt q ≤ (sqrtq q n).fst + 2 * Real.sqrt q / 2^n := by
-  rw [sqrtq, boundedSqrt]
-  split_ifs with h
-  · have h₁ : √↑q = 0 := Real.sqrt_eq_zero'.mpr (Rat.cast_nonpos.mpr h)
-    simp [h₁]
-  · dsimp
-    clear h
-    nth_rewrite 4 [← Rat.mkRat_self q]
-    nth_rewrite 1 [← Rat.mkRat_self q]
-    simp only [Rat.mkRat_eq_div, Rat.cast_div, Rat.cast_intCast, Rat.cast_natCast, Nat.cast_nonneg,
-      Real.sqrt_div', Nat.cast_add, Nat.cast_one, Rat.cast_add, Rat.cast_one, one_div]
-    simp [Rat.cast, QInterval.instRatCastQInterval, NonemptyInterval.toProd]
-    have hd := Rat.den_pos q
-    generalize q.num = x, q.den = y at *
-    clear q
-    rcases le_or_lt x 0 with h|h
-    · have h₁ : √↑x = 0 := by
-        rw [Real.sqrt_eq_zero']
-        exact Int.cast_nonpos.mpr h
-      have h₂ : Int.sqrt (x * 4 ^ n) = 0 := by
-        rw [Int.sqrt.eq_1, Int.ofNat_eq_zero, Nat.sqrt_eq_zero, Int.toNat_eq_zero]
-        exact Int.mul_nonpos_of_nonpos_of_nonneg h (by positivity)
-      simp [h₁, h₂]
-    · obtain ⟨z,hz⟩ := Int.eq_ofNat_of_zero_le h.le
-      subst x
-      conv_rhs =>
-        enter [1,1,1,1]
-        tactic => norm_cast
-      rw [Int.sqrt_natCast]
-      simp only [Int.cast_natCast]
-      /-
-      x/(y+ε) = (x/y) - (x/y - x/(y+ε)) = (x/y) - x*(1/y - 1/(y+ε)) = x/y - x*((y+ε) - y)/(y*(y+ε))
-       = x/y - (x/y)*(ε/(y+ε)). The error is thus at most (x/y)*ε/(y+ε), which is upper bounded by
-       ≤ (sqrt q) * 1 / 4^n.
-      Similarly for the numerator.
-      -/
-      have h₁ := @Real.floor_real_sqrt_eq_nat_sqrt (z * 4^n)
-      rify at h₁
-      rw [← h₁, ← Int.self_sub_fract]
-      clear h₁
-      have h₂ := Int.fract_lt_one √(↑z * 4 ^ n)
-      have h₃ := Int.fract_nonneg √(↑z * 4 ^ n)
-      generalize Int.fract √(↑z * 4 ^ n) = ε₁ at *
+    Real.sqrt q ≤ mkRat (Int.sqrt (q.num * 4^n)) ((q.den * 4^n).sqrt + 1) + 2 * Real.sqrt q / 2^n := by
+  nth_rewrite 4 [← Rat.mkRat_self q]
+  nth_rewrite 1 [← Rat.mkRat_self q]
+  simp only [Rat.mkRat_eq_div, Rat.cast_div, Rat.cast_intCast, Rat.cast_natCast, Nat.cast_nonneg,
+    Real.sqrt_div', Nat.cast_add, Nat.cast_one, Rat.cast_add, Rat.cast_one, one_div]
+  have hd := Rat.den_pos q
+  generalize q.num = x, q.den = y at *
+  clear q
+  rcases le_or_lt x 0 with h|h
+  · have h₁ : √↑x = 0 := by
+      rw [Real.sqrt_eq_zero']
+      exact Int.cast_nonpos.mpr h
+    have h₂ : Int.sqrt (x * 4 ^ n) = 0 := by
+      rw [Int.sqrt.eq_1, Int.ofNat_eq_zero, Nat.sqrt_eq_zero, Int.toNat_eq_zero]
+      exact Int.mul_nonpos_of_nonpos_of_nonneg h (by positivity)
+    simp [h₁, h₂]
+  · obtain ⟨z,hz⟩ := Int.eq_ofNat_of_zero_le h.le
+    subst x
+    conv_rhs =>
+      enter [1,1,1,1]
+      tactic => norm_cast
+    rw [Int.sqrt_natCast]
+    simp only [Int.cast_natCast]
+    /-
+    x/(y+ε) = (x/y) - (x/y - x/(y+ε)) = (x/y) - x*(1/y - 1/(y+ε)) = x/y - x*((y+ε) - y)/(y*(y+ε))
+      = x/y - (x/y)*(ε/(y+ε)). The error is thus at most (x/y)*ε/(y+ε), which is upper bounded by
+      ≤ (sqrt q) * 1 / 4^n.
+    Similarly for the numerator.
+    -/
+    have h₁ := @Real.floor_real_sqrt_eq_nat_sqrt (z * 4^n)
+    rify at h₁
+    rw [← h₁, ← Int.self_sub_fract]
+    clear h₁
+    have h₂ := Int.fract_lt_one √(↑z * 4 ^ n)
+    have h₃ := Int.fract_nonneg √(↑z * 4 ^ n)
+    generalize Int.fract √(↑z * 4 ^ n) = ε₁ at *
 
-      have h₁ := @Real.floor_real_sqrt_eq_nat_sqrt (y * 4^n)
-      rify at h₁
-      rw [← h₁, ← Int.self_sub_fract]
-      clear h₁
-      have h₄ := Int.fract_lt_one √(↑y * 4 ^ n)
-      have h₅ := Int.fract_nonneg √(↑y * 4 ^ n)
-      rw [sub_add_comm]
-      rw [← sub_sub_cancel 1 (Int.fract _)] at h₄ h₅
-      generalize 1 - Int.fract √(↑y * 4 ^ n) = ε₂ at *
-      simp only [sub_lt_self_iff, sub_nonneg] at h₄ h₅
+    have h₁ := @Real.floor_real_sqrt_eq_nat_sqrt (y * 4^n)
+    rify at h₁
+    rw [← h₁, ← Int.self_sub_fract]
+    clear h₁
+    have h₄ := Int.fract_lt_one √(↑y * 4 ^ n)
+    have h₅ := Int.fract_nonneg √(↑y * 4 ^ n)
+    rw [sub_add_comm]
+    rw [← sub_sub_cancel 1 (Int.fract _)] at h₄ h₅
+    generalize 1 - Int.fract √(↑y * 4 ^ n) = ε₂ at *
+    simp only [sub_lt_self_iff, sub_nonneg] at h₄ h₅
 
-      rw [Real.sqrt_mul', Real.sqrt_mul',
-        show (4 ^ n = ((2 ^ n) ^ 2 : ℝ)) by norm_cast; rw [Nat.pow_right_comm]]
-      rotate_left; positivity; positivity
-      simp only [Nat.ofNat_nonneg, pow_nonneg, Real.sqrt_sq]
+    rw [Real.sqrt_mul', Real.sqrt_mul',
+      show (4 ^ n = ((2 ^ n) ^ 2 : ℝ)) by norm_cast; rw [Nat.pow_right_comm]]
+    rotate_left; positivity; positivity
+    simp only [Nat.ofNat_nonneg, pow_nonneg, Real.sqrt_sq]
 
-      rw [_root_.add_comm ε₂, sub_div, denom_err]
-      rotate_left; positivity; positivity
+    rw [_root_.add_comm ε₂, sub_div, denom_err]
+    rotate_left; positivity; positivity
 
-      rw [show √↑z * 2 ^ n / (√↑y * 2 ^ n) = √↑z / √↑y by field_simp; ring_nf]
-      suffices (√↑z / √↑y * ε₂ / (√↑y * 2 ^ n + ε₂) ≤ √↑z / √↑y / 2 ^ n)
-        ∧ (ε₁ / (√↑y * 2 ^ n + ε₂) ≤ √↑z / √↑y / 2 ^ n) by
-        rcases this
-        rw [← mul_div 2]
-        linarith
+    rw [show √↑z * 2 ^ n / (√↑y * 2 ^ n) = √↑z / √↑y by field_simp; ring_nf]
+    suffices (√↑z / √↑y * ε₂ / (√↑y * 2 ^ n + ε₂) ≤ √↑z / √↑y / 2 ^ n)
+      ∧ (ε₁ / (√↑y * 2 ^ n + ε₂) ≤ √↑z / √↑y / 2 ^ n) by
+      rcases this
+      rw [← mul_div 2]
+      linarith
 
-      replace h : 1 ≤ √↑z := Real.one_le_sqrt.mpr (by norm_cast at h ⊢)
-      replace hd : 1 ≤ √↑y := Real.one_le_sqrt.mpr (Nat.one_le_cast.mpr hd)
+    replace h : 1 ≤ √↑z := Real.one_le_sqrt.mpr (by norm_cast at h ⊢)
+    replace hd : 1 ≤ √↑y := Real.one_le_sqrt.mpr (Nat.one_le_cast.mpr hd)
 
-      constructor
-      · apply div_le_div₀
-        · positivity
-        · exact mul_le_of_le_one_right (by positivity) h₅
-        · positivity
-        · trans √↑y * 2 ^ n
-          · exact le_mul_of_one_le_left (by positivity) hd
-          · exact le_add_of_nonneg_right h₄.le
-      · rw [div_div]
-        apply div_le_div₀
-        · positivity
-        · exact h₂.le.trans h
-        · positivity
+    constructor
+    · apply div_le_div₀
+      · positivity
+      · exact mul_le_of_le_one_right (by positivity) h₅
+      · positivity
+      · trans √↑y * 2 ^ n
+        · exact le_mul_of_one_le_left (by positivity) hd
         · exact le_add_of_nonneg_right h₄.le
+    · rw [div_div]
+      apply div_le_div₀
+      · positivity
+      · exact h₂.le.trans h
+      · positivity
+      · exact le_add_of_nonneg_right h₄.le
 
-theorem ub_sub_le_sqrt (x : ComputableℝSeq) (n : ℕ) :
-    (sqrtq (x.lub n) n).snd - (1/2^n) ≤ x.val.sqrt := by
+theorem ub_sub_le_sqrt (q : ℚ) (n : ℕ) :
+    (if q ≤ 0 then 0 else
+      mkRat (Int.sqrt (q.num * 4 ^ n) + 1) (q.den * 4 ^ n).sqrt
+    ) - 2 * Real.sqrt q / 2^n ≤ Real.sqrt q := by
   sorry
 
 theorem TLUW_lower : TendstoLocallyUniformlyWithout
@@ -352,7 +347,48 @@ theorem TLUW_lower : TendstoLocallyUniformlyWithout
     (fun q => √↑q) := by
   rw [TendstoLocallyUniformlyWithout]
   intro ε hε x
-  sorry
+  dsimp
+  rcases lt_or_le x 0 with h|h
+  · use Set.Iic 0, Iic_mem_nhds h, 0
+    intro b _ y hy
+    change y ≤ (0:ℝ) at hy
+    have h₂ : Int.sqrt (y.num * 4 ^ b) = 0 := by
+      rw [Int.sqrt.eq_1, Int.ofNat_eq_zero, Nat.sqrt_eq_zero, Int.toNat_eq_zero]
+      exact Int.mul_nonpos_of_nonpos_of_nonneg (Rat.num_nonpos.mpr <| Rat.cast_nonpos.mp hy) (by positivity)
+    simp [Real.sqrt_eq_zero'.mpr hy, h₂, hε]
+  · set tm := max (2 * x) 1
+    have htm₀ : 0 < tm := by positivity
+    have htm : x < tm := by
+      by_cases 0 < x
+      · exact lt_sup_of_lt_left (by linarith)
+      · exact lt_sup_of_lt_right (by linarith)
+    use Set.Ioo (-1) tm, Ioo_mem_nhds (by linarith) htm
+    set ε' := (ε / (2 * tm.sqrt)) with hε'
+    set a := Int.clog 2 (1 / ε') with ha
+    use a.toNat
+    rintro b hb q ⟨hq₁, hq₂⟩
+    by_cases hq₃ : q ≤ 0
+    · have h₂ : Int.sqrt (q.num * 4 ^ b) = 0 := by
+        rw [Int.sqrt.eq_1, Int.ofNat_eq_zero, Nat.sqrt_eq_zero, Int.toNat_eq_zero]
+        exact Int.mul_nonpos_of_nonpos_of_nonneg (Rat.num_nonpos.mpr hq₃) (by positivity)
+      simp [Real.sqrt_eq_zero'.mpr (Rat.cast_nonpos.mpr hq₃), h₂, hε]
+    push_neg at hq₃
+    suffices 2 * √↑q / 2 ^ b < ε by
+      have hb₁ := boundedSqrt_le_rsqrt q b 4 (by norm_num)
+      rw [Nat.cast_ofNat] at hb₁
+      have hb₂ := sqrt_lb_le_lb_add q b
+      rw [abs_sub_lt_iff]
+      constructor <;> linarith
+    replace hb : Int.clog 2 (1 / ε') ≤ b := Int.toNat_le.mp hb
+    replace hb : 2 ^ (Int.clog 2 (1 / ε')) ≤ (2 : ℝ) ^ (b : ℤ) := zpow_le_zpow_right₀ (one_le_two) hb
+    replace hb := le_trans (Int.self_le_zpow_clog Nat.one_lt_two (1 / ε')) hb
+    rw [hε', zpow_natCast] at hb
+    have hqtm := Real.sqrt_lt_sqrt (Rat.cast_nonneg.mpr hq₃.le) hq₂
+    have hq0 := Real.sqrt_pos_of_pos (Rat.cast_pos.mpr hq₃)
+    simp only [one_div, inv_div] at hb
+    rw [div_le_iff₀ (by positivity)] at hb
+    rw [div_lt_iff₀ (by positivity), _root_.mul_comm ε]
+    linarith
 
 theorem TLUW_upper : TendstoLocallyUniformlyWithout
     (fun n (x : ℚ) => ↑((fun n q =>
@@ -360,6 +396,7 @@ theorem TLUW_upper : TendstoLocallyUniformlyWithout
     (fun q => √↑q) := by
   rw [TendstoLocallyUniformlyWithout]
   intro ε hε x
+  dsimp
   sorry
 
 def sqrt : ComputableℝSeq → ComputableℝSeq :=
