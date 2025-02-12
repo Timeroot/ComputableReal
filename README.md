@@ -13,7 +13,7 @@ For example, real addition is computable, since we can simply add the respective
 
 ## Implementation details
 
-A `ComputableℝSeq` carries the functions for lower and upper bounds, together with proofs of their validity: they are equivalent Cauchy sequences, and the lower bound (resp. upper) stays below (resp. above) the completiton of the Cauchy sequence. Addition, negation, multiplication, and continuous functions can be computed on these sequences without issue.
+A `ComputableℝSeq` carries the functions for lower and upper bounds, together with proofs of their validity: they are equivalent Cauchy sequences, and the lower bound (resp. upper) stays below (resp. above) the completion of the Cauchy sequence. Addition, negation, multiplication, and continuous functions can be computed on these sequences without issue.
 
 When the sign function is needed, `ComputableℝSeq.sign` gives a `partial def` for computing this. Evaluating `ComputableℝSeq.sign` on `4 * (1/4 : ℚ) - 1` will immediately give `0`, since the lower and upper bounds will both evaluate to zero; but `Real.sqrt 2 - Real.sqrt 2` will never terminate. Computing the inverse of a `ComputableℝSeq` then calls `sign` appropriately. This also lets us create a `Decidable (x ≤ y)` instance where `x` and `y` are `ComputableℝSeq`.
 
