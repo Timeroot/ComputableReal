@@ -83,11 +83,11 @@ end QInterval
 /-- Type class for sequences that converge to some real number from above and below. `lub` is a
   function that gives upper *and* lower bounds, bundled so it can reuse computation. `hcau`
   asserts that the two bounds are Cauchy sequences, `hlub` asserts that they're valid
-  lower and upper bounds, and `heq'` asserts that they converge to a common value. This is form
-  probably less comfortable for proving with; use `ComputableℝSeq.mk` to construct it from
-  a (non-shared) lower and upper bound sequence. The defs `lb`, `ub` are the actual CauSeq's ,
-  `val` is the associated real number, and `hlb`, `hub`, and `heq` relate `lb` `ub` and `val` to
-  each other. -/
+  lower and upper bounds, and `heq'` asserts that they converge to a common value. Use
+  `ComputableℝSeq.mk` to construct with regards to a reference real value.
+
+  The defs `lb`, `ub` are the actual CauSeq's , `val` is the associated real number,
+  and `hlb`, `hub`, and `heq` relate `lb` `ub` and `val` to each other. -/
 structure ComputableℝSeq where
   mk' ::
   lub : ℕ → NonemptyInterval ℚ
