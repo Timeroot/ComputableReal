@@ -1,4 +1,6 @@
 import ComputableReal.ComputableReal
+import Mathlib.Analysis.RCLike.Basic
+import Mathlib.Tactic.Peel
 
 /- Type class stating that `x:ℝ` has a ComputableℝSeq, i.e. that x is a computable number. Like
 `Decidable`, it carries data with it - even though (classically) we could prove that ever proposition
@@ -134,3 +136,117 @@ example : ((3 : ℝ) + (5 : ℕ)) / 100 < (3 : ℚ) * (5 + (1 / 5)^2 - 1) ∧
   native_decide
 
 end IsComputable
+
+
+/-- This is very similar to the statement
+`TendstoLocallyUniformly (fun n x ↦ (F n x : ℝ)) (fun (q : ℚ) ↦ f q) .atTop`
+but that only uses neighborhoods within the rationals, which is a strictly
+weaker condition. This uses neighborhoods in the ambient space, the reals.
+-/
+def TendstoLocallyUniformlyWithout (F : ℕ → ℚ → ℚ) (f : ℝ → ℝ) : Prop :=
+  ∀ (ε : ℝ), 0 < ε →
+    ∀ (x : ℝ), ∃ t ∈ nhds x, ∃ a, ∀ (b : ℕ), a ≤ b → ∀ (y : ℚ), ↑y ∈ t →
+    |f y - ↑(F b y)| < ε
+
+theorem Real_mk_of_TendstoLocallyUniformly' (fImpl : ℕ → ℚ → ℚ) (f : ℝ → ℝ)
+    (hfImpl : TendstoLocallyUniformlyWithout (fImpl) (f))
+    (hf : Continuous f)
+    (x : CauSeq ℚ abs)
+    : ∃ (h : IsCauSeq abs (fun n ↦ fImpl n (x n))), Real.mk ⟨_, h⟩ = f (.mk x) := by
+
+  apply Real.of_near
+
+  simp only [Metric.continuous_iff, gt_iff_lt, Real.dist_eq] at hf
+
+  rcases x with ⟨x, hx⟩
+  intro ε hε
+
+  obtain ⟨δ₁, hδ₁pos, hδ₁⟩ := hf (.mk ⟨x, hx⟩) _ (half_pos hε)
+  obtain ⟨i₁, hi₁⟩ := cauchy_real_mk ⟨x, hx⟩ δ₁ hδ₁pos
+
+  obtain ⟨i₂_nhd, hi₂_nhds, i₃, hi₃⟩ := hfImpl _ (half_pos hε) (.mk ⟨x, hx⟩)
+  obtain ⟨nl, nu, ⟨hnl, hnu⟩, hnd_sub⟩ := mem_nhds_iff_exists_Ioo_subset.mp hi₂_nhds
+  replace hnd_sub : ∀ (r : ℚ), nl < r ∧ r < nu → ↑r ∈ i₂_nhd := fun r a => hnd_sub a
+  replace hi₃ : ∀ (b : ℕ), i₃ ≤ b → ∀ (y : ℚ), nl < y ∧ y < nu → |f ↑y - ↑(fImpl b y)| < (ε / 2) := by
+    peel hi₃
+    exact fun h ↦ this (hnd_sub _ h)
+
+  set ε_nhd := min (nu - (.mk ⟨x,hx⟩)) ((.mk ⟨x,hx⟩) - nl) with hε_nhd
+  obtain ⟨i₄, hi₄⟩ := cauchy_real_mk ⟨x,hx⟩ (ε_nhd / 2) (by
+    rw [hε_nhd, gt_iff_lt, ← min_div_div_right (zero_le_two), lt_inf_iff]
+    constructor <;> linarith)
+
+  have hεn₁ : ε_nhd ≤ _ := inf_le_left
+  have hεn₂ : ε_nhd ≤ _ := inf_le_right
+
+  set i := max i₁ (max i₃ i₄) with hi
+  use i
+  intro j hj
+  simp only [hi, ge_iff_le, sup_le_iff] at hj
+
+  specialize hδ₁ _ (hi₁ j (by linarith))
+  specialize hi₄ j (by linarith)
+  specialize hi₃ j (by linarith) (x j) (by
+    constructor
+    · linarith [sub_le_of_abs_sub_le_left hi₄.le]
+    · linarith [sub_le_of_abs_sub_le_right hi₄.le]
+  )
+
+  calc |↑(fImpl j (x j)) - f (Real.mk ⟨x, hx⟩)| =
+    |(↑(fImpl j (x j)) - f ↑(x j)) + (f ↑(x j) - f (Real.mk ⟨x, hx⟩))| := by congr; ring_nf
+    _ ≤ |(↑(fImpl j (x j)) - f ↑(x j))| + |(f ↑(x j) - f (Real.mk ⟨x, hx⟩))| := abs_add _ _
+    _ < ε := by rw [abs_sub_comm]; linarith
+
+open scoped QInterval
+
+namespace ComputableℝSeq
+
+def of_TendstoLocallyUniformly_Continuous
+    {f : ℝ → ℝ} (hf : Continuous f)
+    (fImpl : ℕ → ℚInterval → ℚInterval)
+    (fImpl_l : ℕ → ℚ → ℚ)
+    (fImpl_u : ℕ → ℚ → ℚ)
+    (hlb : ∀ (n : ℕ) (q : ℚInterval) (x : ℝ), x ∈ q → fImpl_l n q.fst ≤ f x)
+    (hub : ∀ (n : ℕ) (q : ℚInterval) (x : ℝ), x ∈ q → f x ≤ fImpl_u n q.snd)
+    (hImplDef : ∀ n q, fImpl n q = ⟨⟨fImpl_l n q.fst, fImpl_u n q.snd⟩,
+      Rat.cast_le.mp ((hlb n q q.fst ⟨le_refl _, Rat.cast_le.mpr q.2⟩).trans
+      (hub n q q.fst ⟨le_refl _, Rat.cast_le.mpr q.2⟩))⟩)
+    (hTLU_l : TendstoLocallyUniformlyWithout fImpl_l f)
+    (hTLU_u : TendstoLocallyUniformlyWithout fImpl_u f)
+    (x : ComputableℝSeq) : ComputableℝSeq :=
+  mk
+  (x := f x.val)
+  (lub := fun n ↦ fImpl n (x.lub n))
+  (hcl := by
+    obtain ⟨w, _⟩ := Real_mk_of_TendstoLocallyUniformly' fImpl_l f hTLU_l hf x.lb
+    simp_rw [hImplDef]
+    exact w
+  )
+  (hcu := by
+    obtain ⟨w, _⟩ := Real_mk_of_TendstoLocallyUniformly' fImpl_u f hTLU_u hf x.ub
+    simp_rw [hImplDef]
+    exact w
+  )
+  (hlb := fun n ↦ by simp_rw [hImplDef]; exact hlb n (x.lub n) x.val ⟨x.hlb n, x.hub n⟩)
+  (hub := fun n ↦ by simp_rw [hImplDef]; exact hub n (x.lub n) x.val ⟨x.hlb n, x.hub n⟩)
+  (heq := by
+    obtain ⟨_, h₁⟩ := Real_mk_of_TendstoLocallyUniformly' fImpl_l f hTLU_l hf x.lb
+    obtain ⟨_, h₂⟩ := Real_mk_of_TendstoLocallyUniformly' fImpl_u f hTLU_u hf x.ub
+    simp only [hImplDef, ← Real.mk_eq]
+    rw [lb_eq_ub] at h₁
+    exact h₁.trans h₂.symm
+  )
+
+@[simp]
+theorem val_of_TendstoLocallyUniformly_Continuous (f) (hf : Continuous f) (fI fl fu h₁ h₂ h₃ h₄ h₅ a)
+  : (of_TendstoLocallyUniformly_Continuous hf fI fl fu h₁ h₂ h₃ h₄ h₅ a).val =
+    f a.val :=
+  ComputableℝSeq.mk_val_eq_val
+
+end ComputableℝSeq
+
+--mostly a helper for numerical investigation
+def Rat.toDecimal (q : ℚ) (prec : ℕ := 20) :=
+  let p : ℚ → String := fun q ↦
+    (q.floor.repr).append <| ".".append <| (10^prec * (q - q.floor)).floor.repr.leftpad prec '0'
+  if q < 0 then "-".append (p (-q)) else if q = 0 then "0" else p q
