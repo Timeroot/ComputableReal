@@ -48,20 +48,25 @@ example : Real.sqrt 2 - Real.sqrt 2 = 0:= by --hangs
 * Addition, negation, subtraction
 * Multiplication, natural number powers
 * Inverses, division, integer powers
-* Casts from naturals, rationals, and `ofNat` literals
+* Casts from naturals, rationals, `ofNat` literals, and `OfScientific` literals (e.g `1.2`)
+* Simple functions: `ite`, `dite`, `Real.sign`, `abs`, `max`, `min`, `Finset.sum`
 * `Real.sqrt`
+* `Real.pi`
 
 ## TODO List
 Roughly in order:
- * `OfScientific.ofScientific` so that literals like `1.2` can be handled correctly
- * Adding support for `Real.pi` using repeated square-roots formula
  * Adding support for `Real.exp` using repeated halving
    * This immediately gives support for `Real.sinh`, `Real.cosh`, `Real.tanh` 
- * Adding support for `Real.log` - will require similarly "sign handling" to inverses, due to the discontinuity at zero.
-   * This gets us `Real.arsinh` ... not that it's in particularly high demand. 
+ * Adding support for `Real.log` - will require careful sign handling similarly to inverses, due to the discontinuity at zero.
+   * This gets us `Real.arsinh` ... not that it's in particularly high demand.
+   * Also `Real.logb`, `Real.negMulLog`, `Real.posLog`.
  * Adding support for `Real.cos`
    * This gets us `Real.sin`, `Real.tan`, and most importantly, real powers `_ ^ _`. These rely on cosine because of their behavior with negative powers.
  * Supporting complex numbers, as a pair of computable sequences for real and imaginary parts.
    * Then using `Real.exp` and `Real.sin`/`Real.cos`, we get `Complex.exp`; then we get trig functions on the complex numbers for free too.
- * Adding `Real.arctan`.
-   * This gets us `Real.arcsin` and `Real.arccos`, but also importantly `Complex.log`. Then from `Complex.log` we get all the trig functions' inverses on the complex numbers.
+   * Make sure to add computability instances for `Complex.re`, `Complex.im`, `Complex.ofReal`, `abs`, `Complex.mk`, `Complex.normSq`, `Complex.instNorm`, `Complex.inner`... probably more.
+ * Adding `Real.arctan`, possibly via `Real.two_mul_arctan_add_pi`.
+   * This gets us `Real.arcsin` and `Real.arccos`, but also importantly `Complex.arg` and `Complex.log`. Then from `Complex.log` we get all the trig functions' inverses on the complex numbers.
+ * Other, low-priority functions that can be implemented:
+   * `Real.Gamma`, with the theorem `Real.GammaSeq_tendsto_Gamma`. Actually, given an implementation of `Real.pi`, this would give an alternate implementation of `Real.sin` using `Real.Gamma_mul_Gamma_one_sub` ... but that's probably not very practical.
+   * Integrals with certain properties (such as positivity / convexity)
