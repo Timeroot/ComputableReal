@@ -9,6 +9,12 @@ class IsComputable (x : ℝ) : Type where
 
 namespace IsComputable
 
+/-- Turns one `IsComputable` into another one, given a proof that they're equal. This is directly
+analogous to `decidable_of_iff`, as a way to avoid `Eq.rec` on data-carrying instances. -/
+def lift_eq {x y : ℝ} (h : x = y) :
+    IsComputable x → IsComputable y :=
+  fun ⟨sx, hsx⟩ ↦ ⟨sx, h ▸ hsx⟩
+
 def lift (fr : ℝ → ℝ) (fs : ComputableℝSeq → ComputableℝSeq)
     (h : ∀ a, (fs a).val = fr a.val) :
     IsComputable x → IsComputable (fr x) :=
@@ -116,6 +122,12 @@ instance instDecidableLT [hx : IsComputable x] [hy : IsComputable y] : Decidable
   decidable_of_decidable_of_iff (p := Computableℝ.mk hx.seq < Computableℝ.mk hy.seq) (by
     simp only [← Computableℝ.lt_iff_lt, Computableℝ.val_mk_eq_val, hx.prop, hy.prop]
   )
+
+instance instDecidableLE_val (x y : ComputableℝSeq) : Decidable (x.val ≤ y.val) :=
+  @instDecidableLE x.val y.val ⟨x, rfl⟩ ⟨y,rfl⟩
+
+instance instDecidableLT_val (x y : ComputableℝSeq) : Decidable (x.val < y.val) :=
+  @instDecidableLT x.val y.val ⟨x, rfl⟩ ⟨y,rfl⟩
 
 example : ((3 : ℝ) + (5 : ℕ)) / 100 < (3 : ℚ) * (5 + (1 / 5)^2 - 1) ∧
     (5:ℕ) = ((1:ℝ) + (2:ℚ)^2) := by

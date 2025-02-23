@@ -768,9 +768,14 @@ def sqrt : ComputableℝSeq → ComputableℝSeq :=
       exact le_trans (Real.sqrt_le_sqrt hx₂) this
   )
 
-instance instComputableSqrt (x : ℝ) [hx : IsComputable x] : IsComputable (x.sqrt) :=
-  .lift (Real.sqrt) sqrt (by apply val_of_TendstoLocallyUniformly_Continuous) hx
-
 end Sqrt
 
 end ComputableℝSeq
+
+namespace IsComputable
+
+instance instComputableSqrt (x : ℝ) [hx : IsComputable x] : IsComputable (x.sqrt) :=
+  .lift (Real.sqrt) ComputableℝSeq.Sqrt.sqrt
+    (by apply ComputableℝSeq.val_of_TendstoLocallyUniformly_Continuous) hx
+
+end IsComputable

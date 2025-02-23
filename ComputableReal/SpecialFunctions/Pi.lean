@@ -10,7 +10,7 @@ section Pi
 
 instance instComputableSqrtTwoAddSeries (x : ℝ) [hx : IsComputable x] (n : ℕ) :
     IsComputable (Real.sqrtTwoAddSeries x n) :=
-  n.rec hx (fun _ _ ↦ Sqrt.instComputableSqrt _)
+  n.rec hx (fun _ _ ↦ IsComputable.instComputableSqrt _)
 
 def sqrtTwoAddSeries_n : ℕ → ComputableℝSeq :=
   fun n ↦ (instComputableSqrtTwoAddSeries 0 n).seq
@@ -449,13 +449,17 @@ def Pi : ComputableℝSeq :=
     rw [← Real.mk_eq, h₁, h₂]
   )
 
-instance instComputableSqrt : IsComputable (Real.pi) where
-  seq := Pi
-  prop := ComputableℝSeq.mk_val_eq_val
-
 end Pi
 
 end ComputableℝSeq
+
+namespace IsComputable
+
+instance instComputablePi : IsComputable (Real.pi) where
+  seq := ComputableℝSeq.Pi
+  prop := ComputableℝSeq.mk_val_eq_val
+
+end IsComputable
 
 example :
     2 < √(Real.pi + 1)
