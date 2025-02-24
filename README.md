@@ -44,19 +44,19 @@ example : Real.sqrt 2 - Real.sqrt 2 = 0:= by --hangs
   native_decide
 ```
 
+There are more examples in [examples.lean](./ComputableReal/examples.lean).
+
 ## What's supported
 * Addition, negation, subtraction
 * Multiplication, natural number powers
 * Inverses, division, integer powers
 * Casts from naturals, rationals, `ofNat` literals, and `OfScientific` literals (e.g `1.2`)
 * Simple functions: `ite`, `dite`, `Real.sign`, `abs`, `max`, `min`, `Finset.sum`
-* `Real.sqrt`
-* `Real.pi`
+* Special functions: `Real.sqrt`, `Real.exp`, `Real.sinh`, `Real.cosh`, `Real.tanh`
+* Constants: `Real.pi`, e (as `Real.exp 1`), `goldenRatio`, `goldenConj`
 
 ## TODO List
 Roughly in order:
- * Adding support for `Real.exp` using repeated halving
-   * This immediately gives support for `Real.sinh`, `Real.cosh`, `Real.tanh` 
  * Adding support for `Real.log` - will require careful sign handling similarly to inverses, due to the discontinuity at zero.
    * This gets us `Real.arsinh` ... not that it's in particularly high demand.
    * Also `Real.logb`, `Real.negMulLog`, `Real.posLog`.

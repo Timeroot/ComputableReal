@@ -1,3 +1,4 @@
 import ComputableReal.SpecialFunctions.Basic
 import ComputableReal.SpecialFunctions.Sqrt
 import ComputableReal.SpecialFunctions.Pi
+import ComputableReal.SpecialFunctions.Exp

@@ -1,6 +1,7 @@
 import ComputableReal.IsComputable
 import Mathlib.Data.Real.Sqrt
 import Mathlib.Analysis.SpecialFunctions.Log.Base
+import Mathlib.Data.Real.GoldenRatio
 
 namespace ComputableℝSeq
 
@@ -666,5 +667,11 @@ namespace IsComputable
 instance instComputableSqrt (x : ℝ) [hx : IsComputable x] : IsComputable (x.sqrt) :=
   .lift (Real.sqrt) ComputableℝSeq.Sqrt.sqrt
     (by apply ComputableℝSeq.val_of_TendstoLocallyUniformly_Continuous) hx
+
+instance instComputableGoldenRatio : IsComputable goldenRatio :=
+  inferInstanceAs (IsComputable ((1 + √5) / 2))
+
+instance instComputableGoldenConj : IsComputable goldenConj :=
+  inferInstanceAs (IsComputable ((1 - √5) / 2))
 
 end IsComputable
