@@ -2,6 +2,12 @@ This is a package for [Lean4](https://github.com/leanprover/lean4) to enable com
 ```lean
 example : Real.sqrt (1 + (1/4 : ℚ)) > Real.sqrt (2 + Real.sqrt (3 : ℕ)) / (Real.sqrt 7 - 1/2) := by
   native_decide
+
+example : |√3 - 2 * exp 1 / π| < 0.002 := by
+  native_decide
+
+example : (1 + Complex.I) * (1 - Complex.I : ℂ) = 2 := by
+  native_decide
 ```
 can now be proved by `native_decide`.
 
@@ -54,6 +60,7 @@ There are more examples in [examples.lean](./ComputableReal/examples.lean).
 * Simple functions: `ite`, `dite`, `Real.sign`, `abs`, `max`, `min`, `Finset.sum`
 * Special functions: `Real.sqrt`, `Real.exp`, `Real.sinh`, `Real.cosh`, `Real.tanh`
 * Constants: `Real.pi`, e (as `Real.exp 1`), `goldenRatio`, `goldenConj`
+* Complex numbers: field operations, casts, `norm`, `inner`, `normSq`
 
 ## TODO List
 Roughly in order:
@@ -62,9 +69,7 @@ Roughly in order:
    * Also `Real.logb`, `Real.negMulLog`, `Real.posLog`.
  * Adding support for `Real.cos`
    * This gets us `Real.sin`, `Real.tan`, and most importantly, real powers `_ ^ _`. These rely on cosine because of their behavior with negative powers.
- * Supporting complex numbers, as a pair of computable sequences for real and imaginary parts.
    * Then using `Real.exp` and `Real.sin`/`Real.cos`, we get `Complex.exp`; then we get trig functions on the complex numbers for free too.
-   * Make sure to add computability instances for `Complex.re`, `Complex.im`, `Complex.ofReal`, `abs`, `Complex.mk`, `Complex.normSq`, `Complex.instNorm`, `Complex.inner`... probably more.
  * Adding `Real.arctan`, possibly via `Real.two_mul_arctan_add_pi`.
    * This gets us `Real.arcsin` and `Real.arccos`, but also importantly `Complex.arg` and `Complex.log`. Then from `Complex.log` we get all the trig functions' inverses on the complex numbers.
  * Other, low-priority functions that can be implemented:
