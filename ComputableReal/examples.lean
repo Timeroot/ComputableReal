@@ -102,3 +102,10 @@ error: failed to compile definition, consider marking it as 'noncomputable' beca
 #guard_msgs in
 example : 0 < ProbabilityTheory.gammaCDFReal 1 (1 / 2) 2 := by
   native_decide
+
+/- Operations over complex numbers: -/
+example : (1 + Complex.I) * (1 - Complex.I : ℂ) = 2 := by
+  native_decide
+
+example : ‖Complex.I‖ ≠ (1 / 2) := by
+  native_decide
