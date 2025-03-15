@@ -12,6 +12,9 @@ scoped notation "ℚInterval" => NonemptyInterval ℚ
 scoped instance (priority := 100) instMemℝℚInterval : Membership ℝ ℚInterval :=
   ⟨fun s a => s.fst ≤ a ∧ a ≤ s.snd⟩
 
+theorem mem_qinterval_iff_and (q : ℚInterval) (x : ℝ) : x ∈ q ↔ q.fst ≤ x ∧ x ≤ q.snd :=
+  Iff.rfl
+
 section mul
 /--Multiplication on intervals of ℚ. TODO: Should generalize to any LinearOrderedField... -/
 def mul_pair (x y : ℚInterval) : ℚInterval :=
