@@ -1,4 +1,7 @@
 import ComputableReal.IsComputable
+import ComputableReal.SpecialFunctions.Basic
+import ComputableReal.SpecialFunctions.Pi
+
 import Mathlib.Analysis.Calculus.MeanValue
 import Mathlib.Analysis.Calculus.Deriv.Pow
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
@@ -353,3 +356,35 @@ def cos (x : ComputableℝSeq) : ComputableℝSeq :=
 
 #eval! ((cos (-17)).lb 1).toDecimal
 #eval! ((cos 17).ub 2).toDecimal
+
+end Cos
+
+end ComputableℝSeq
+
+namespace IsComputable
+
+instance instComputableCos (x : ℝ) [hx : IsComputable x] : IsComputable (Real.cos x) :=
+  lift Real.cos ComputableℝSeq.Cos.cos (fun _ ↦ ComputableℝSeq.mk_val_eq_val) hx
+
+instance instComputableSin (x : ℝ) [hx : IsComputable x] : IsComputable (Real.sin x) :=
+  lift_eq (Real.cos_pi_div_two_sub x) inferInstance
+
+end IsComputable
+
+--Tests + examples
+example : Real.sin 3 < 1/7 := by
+  native_decide
+
+example : 2/3 ≤ (1 : ℝ).sin.sin.sin := by --0.678
+  native_decide
+
+example :
+    let diff := √(1 - (Real.cos 7)^2) - Real.sin 7; --exactly 0 by sin²+cos²=1
+    -0.00001 < diff ∧ diff < 0.00001 := by
+  native_decide
+
+example :
+    --cosine has a unique fixed point so this will be close regardless of starting values
+    let diff := (1 : ℝ).cos.cos.cos.cos.cos - (2 : ℝ).cos.cos.cos.cos.cos;
+    -0.02 < diff ∧ diff < 0.02 := by
+  native_decide
