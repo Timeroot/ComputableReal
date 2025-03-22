@@ -471,4 +471,6 @@ instance instComputableCosh (x : ℝ) [hx : IsComputable x] : IsComputable (Real
 instance instComputableTanh (x : ℝ) [hx : IsComputable x] : IsComputable (Real.tanh x) :=
   lift_eq (Real.tanh_eq_sinh_div_cosh x).symm inferInstance
 
+--TODO: mulExpNegMulSq
+
 end IsComputable

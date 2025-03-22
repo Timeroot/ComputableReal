@@ -281,6 +281,7 @@ theorem cos_unit_interval_mem (x : ℚInterval) (hx : -1 ≤ x.fst ∧ x.snd ≤
   --This sort of subsumes the proof of cos_unit_interval_ordered, since we're showing
   -- that lb ≤ cos x and cos ≤ ub so of course lb ≤ ub ... so that proof might become
   -- unneeded.
+  --EDIT: actually this is in Mathlib in the form `Real.hasSum_cos`.
   change And _ _
   dsimp [cos_unit_interval]
   replace hr := mem_sq x r hr
