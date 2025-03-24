@@ -1,10 +1,8 @@
 import ComputableReal.IsComputable
 import ComputableReal.SpecialFunctions.Basic
-import ComputableReal.SpecialFunctions.Sqrt
 
 import Mathlib.Analysis.SpecialFunctions.Log.Base
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
-import Mathlib.Analysis.SpecialFunctions.Arsinh
 
 namespace ComputableℝSeq
 
@@ -90,15 +88,5 @@ namespace IsComputable
 
 instance instComputableLog (x : ℝ) [hx : IsComputable x] : IsComputable (Real.log x) :=
   lift Real.log ComputableℝSeq.Log.log (fun _ ↦ ComputableℝSeq.Log.log_val _) hx
-
-instance instComputableLogb (x b : ℝ) [hx : IsComputable x] [hb : IsComputable b] :
-    IsComputable (Real.logb b x) :=
-  lift_eq (Real.logb.eq_1 b x).symm inferInstance
-
-instance instComputableArsinh (x : ℝ) [hx : IsComputable x] :
-    IsComputable (Real.arsinh x) :=
-  lift_eq (Real.arsinh.eq_1 x).symm inferInstance
-
---TODO: NegMulLog, PosLog, binEntropy, qaryEntropy
 
 end IsComputable

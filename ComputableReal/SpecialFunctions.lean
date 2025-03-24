@@ -1,4 +1,7 @@
+import ComputableReal.SpecialFunctions.Advanced
 import ComputableReal.SpecialFunctions.Basic
-import ComputableReal.SpecialFunctions.Sqrt
-import ComputableReal.SpecialFunctions.Pi
+import ComputableReal.SpecialFunctions.Cos
 import ComputableReal.SpecialFunctions.Exp
+import ComputableReal.SpecialFunctions.Log
+import ComputableReal.SpecialFunctions.Pi
+import ComputableReal.SpecialFunctions.Sqrt

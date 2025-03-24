@@ -462,15 +462,4 @@ instance instComputableExp (x : ℝ) [hx : IsComputable x] : IsComputable (Real.
   lift Real.exp ComputableℝSeq.exp
     (by apply ComputableℝSeq.val_of_TendstoLocallyUniformly_Continuous) hx
 
-instance instComputableSinh (x : ℝ) [hx : IsComputable x] : IsComputable (Real.sinh x) :=
-  lift_eq (Real.sinh_eq x).symm inferInstance
-
-instance instComputableCosh (x : ℝ) [hx : IsComputable x] : IsComputable (Real.cosh x) :=
-  lift_eq (Real.cosh_eq x).symm inferInstance
-
-instance instComputableTanh (x : ℝ) [hx : IsComputable x] : IsComputable (Real.tanh x) :=
-  lift_eq (Real.tanh_eq_sinh_div_cosh x).symm inferInstance
-
---TODO: mulExpNegMulSq
-
 end IsComputable

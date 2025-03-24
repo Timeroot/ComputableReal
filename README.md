@@ -75,3 +75,6 @@ Roughly in order:
  * Other, low-priority functions that can be implemented:
    * `Real.Gamma`, with the theorem `Real.GammaSeq_tendsto_Gamma`. Actually, given an implementation of `Real.pi`, this would give an alternate implementation of `Real.sin` using `Real.Gamma_mul_Gamma_one_sub` ... but that's probably not very practical.
    * Integrals with certain properties (such as positivity / convexity)
+ * Some computable version of the `Polynomial` API, both evaluation but also (more excitingly!) root-finding procedures. This would produce (among other things) a way to evaluate algebraic numbers directly.
+
+There is also a lot of room for significant performance improvements. This ranges from "this series could use better constants" to significant architecture changes. The topic is broad; if you're interested in helping with this, probably the best bet is sending me a message on the Lean Zulip server.
