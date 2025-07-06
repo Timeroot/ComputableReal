@@ -13,15 +13,18 @@ namespace IsComputable
 
 /-- Turns one `IsComputable` into another one, given a proof that they're equal. This is directly
 analogous to `decidable_of_iff`, as a way to avoid `Eq.rec` on data-carrying instances. -/
+@[inline]
 def lift_eq {x y : ℝ} (h : x = y) :
     IsComputable x → IsComputable y :=
   fun ⟨sx, hsx⟩ ↦ ⟨sx, h ▸ hsx⟩
 
+@[inline]
 def lift (fr : ℝ → ℝ) (fs : ComputableℝSeq → ComputableℝSeq)
     (h : ∀ a, (fs a).val = fr a.val) :
     IsComputable x → IsComputable (fr x) :=
   fun ⟨sx, hsx⟩ ↦ ⟨fs sx, hsx ▸ h sx⟩
 
+@[inline]
 def lift₂ (fr : ℝ → ℝ → ℝ) (fs : ComputableℝSeq → ComputableℝSeq → ComputableℝSeq)
     (h : ∀a b, (fs a b).val = fr a.val b.val) :
     IsComputable x → IsComputable y → IsComputable (fr x y) :=
@@ -87,7 +90,7 @@ instance instComputableZPow [hx : IsComputable x] (z : ℤ) : IsComputable (x ^ 
   · rw [Int.ofNat_eq_coe, zpow_natCast]
     infer_instance
   · simp only [zpow_negSucc]
-    infer_instance
+    exact lift _ (·⁻¹) ComputableℝSeq.val_inv inferInstance
 
 instance instComputableNSMul [hx : IsComputable x] (n : ℕ) : IsComputable (n • x) :=
   lift _ (n • ·) (by
@@ -120,6 +123,7 @@ instance instDecidableEq [hx : IsComputable x] [hy : IsComputable y] : Decidable
     simp only [← Computableℝ.eq_iff_eq_val, Computableℝ.val_mk_eq_val, hx.prop, hy.prop]
   )
 
+@[always_inline]
 instance instDecidableLT [hx : IsComputable x] [hy : IsComputable y] : Decidable (x < y) :=
   decidable_of_decidable_of_iff (p := Computableℝ.mk hx.seq < Computableℝ.mk hy.seq) (by
     simp only [← Computableℝ.lt_iff_lt, Computableℝ.val_mk_eq_val, hx.prop, hy.prop]
@@ -131,9 +135,15 @@ instance instDecidableLE_val (x y : ComputableℝSeq) : Decidable (x.val ≤ y.v
 instance instDecidableLT_val (x y : ComputableℝSeq) : Decidable (x.val < y.val) :=
   @instDecidableLT x.val y.val ⟨x, rfl⟩ ⟨y,rfl⟩
 
-example : ((3 : ℝ) + (5 : ℕ)) / 100 < (3 : ℚ) * (5 + (1 / 5)^2 - 1) ∧
-    (5:ℕ) = ((1:ℝ) + (2:ℚ)^2) := by
+example : (100 : ℝ)⁻¹ < 1 := by
   native_decide
+
+-- example : (100 : ℝ)⁻¹ < 1 ∧ True := by
+--   native_decide
+
+-- example : ((3 : ℝ) + (5 : ℕ)) / 100 < (3 : ℚ) * (5 + (1 / 5)^2 - 1) ∧
+--     (5:ℕ) = ((1:ℝ) + (2:ℚ)^2) := by
+--   native_decide
 
 end IsComputable
 

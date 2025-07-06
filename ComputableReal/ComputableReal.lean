@@ -152,6 +152,8 @@ instance instCommRing : CommRing Computableℝ := by
             npow := npowRec --todo faster instances
             nsmul := nsmulRec
             zsmul := zsmulRec
+            natCast_succ := ?_
+            sub_eq_add_neg := ?_
             .. }
   all_goals
     intros
@@ -302,26 +304,38 @@ instance instDecidableLE : DecidableRel (fun (x y : Computableℝ) ↦ x ≤ y) 
     infer_instance
 
 --TODO: add a faster `min` and `max` that don't require sign computation.
-instance instLinearOrderedField : LinearOrderedField Computableℝ := by
-  refine' { instField, instLT, instLE with
-      decidableLE := inferInstance
+instance instLinearOrder : LinearOrder Computableℝ := by
+  refine' { instLT, instLE with
+      toDecidableLE := inferInstance
       le_refl := _
       le_trans := _
       le_antisymm := _
-      add_le_add_left := _
-      zero_le_one := _
-      mul_pos := _
       le_total := _
-      lt_iff_le_not_le := _
+      lt_iff_le_not_ge := _
     }
   all_goals
     intros
-    simp only [← le_iff_le, ← lt_iff_lt, ← eq_iff_eq_val, val_add, val_mul, val_zero, val_one] at *
+    simp only [← le_iff_le, ← lt_iff_lt, ← eq_iff_eq_val] at *
     first
     | linarith (config := {splitNe := true})
-    | apply mul_pos ‹_› ‹_›
     | apply le_total
-    | apply lt_iff_le_not_le
+    | apply lt_iff_le_not_ge
+
+instance instStrictOrderedRing : IsStrictOrderedRing Computableℝ := by
+  refine' { instField, instLinearOrder with
+      add_le_add_left := _
+      zero_le_one := _
+      le_of_add_le_add_left := _
+      mul_lt_mul_of_pos_right := _
+      mul_lt_mul_of_pos_left := _
+    }
+  all_goals
+    intros
+    simp only [← le_iff_le, ← lt_iff_lt, val_add, val_mul, val_zero, val_one] at *
+    first
+    | linarith (config := {splitNe := true})
+    | exact (mul_lt_mul_left ‹_›).mpr ‹_›
+    | exact (mul_lt_mul_iff_of_pos_right ‹_›).mpr ‹_›
 
 end ordered
 
