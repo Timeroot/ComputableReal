@@ -1,6 +1,6 @@
 import Mathlib.Algebra.Order.Interval.Basic
 import Mathlib.Data.Real.Archimedean
-import Mathlib.Data.Sign
+import Mathlib.Data.Sign.Basic
 import Mathlib.Tactic.Rify
 
 import ComputableReal.aux_lemmas

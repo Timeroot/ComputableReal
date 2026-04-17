@@ -1,7 +1,7 @@
 import ComputableReal.IsComputable
 import Mathlib.Data.Real.Sqrt
 import Mathlib.Analysis.SpecialFunctions.Log.Base
-import Mathlib.Data.Real.GoldenRatio
+import Mathlib.NumberTheory.Real.GoldenRatio
 
 namespace ComputableℝSeq
 

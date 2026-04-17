@@ -2,7 +2,7 @@ import Mathlib.Data.Real.Archimedean
 
 --============
 --silly lemmas
-theorem abs_ite_le [inst : LinearOrderedAddCommGroup α] (x : α) :
+theorem abs_ite_le [AddCommGroup α] [LinearOrder α] [IsOrderedAddMonoid α] (x : α) :
     abs x = if 0 ≤ x then x else -x := by
   split_ifs <;> simp_all
   next h =>
@@ -10,7 +10,7 @@ theorem abs_ite_le [inst : LinearOrderedAddCommGroup α] (x : α) :
 
 namespace CauSeq
 
-variable [LinearOrderedField α] {a b : CauSeq α abs}
+variable [Field α] [LinearOrder α] [IsStrictOrderedRing α] {a b : CauSeq α abs}
 
 theorem sup_equiv_of_equivs (ha : a ≈ c) (hb : b ≈ c) : a ⊔ b ≈ c := by
   intro n hn
