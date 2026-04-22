@@ -575,7 +575,7 @@ noncomputable def sign_witness_term (x : ComputableℝSeq) (hnz : x.val ≠ 0) :
 theorem sign_witness_term_prop (x : ComputableℝSeq) (n : ℕ) (hnz : x.val ≠ 0)
     (hub : ¬(x.ub).val n < 0) (hlb: ¬(x.lb).val n > 0) :
     n + Nat.succ 0 ≤ (x.sign_witness_term hnz).val.1 := by
-  push_neg at hub hlb
+  push Not at hub hlb
   obtain ⟨⟨k, q⟩, ⟨h₁, h₂, h₃⟩⟩ := x.sign_witness_term hnz
   by_contra hn
   replace h₃ := h₃ n (by linarith)
@@ -941,7 +941,7 @@ theorem add_comm (x y: ComputableℝSeq) : x + y = y + x := by
 
 theorem mul_comm (x y : ComputableℝSeq) : x * y = y * x := by
   ext n
-  <;> simp only [lb_mul, ub_mul, mul_lb, mul_ub]
+  <;> simp only [lb_mul, ub_mul]
   · repeat rw [_root_.mul_comm (lb x)]
     repeat rw [_root_.mul_comm (ub x)]
     dsimp
