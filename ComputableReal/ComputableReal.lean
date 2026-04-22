@@ -313,7 +313,7 @@ noncomputable instance instLinearOrder : LinearOrder Computableℝ where
   le_trans a b c h₁ h₂ := by rw [← le_iff_le] at *; exact le_trans h₁ h₂
   lt_iff_le_not_ge a b := by
     simp only [← lt_iff_lt, ← le_iff_le]
-    exact ⟨fun h => ⟨le_of_lt h, not_le_of_lt h⟩, fun ⟨h₁, h₂⟩ => lt_of_le_not_le h₁ h₂⟩
+    exact lt_iff_le_not_ge
   le_antisymm a b h₁ h₂ := by
     rw [← le_iff_le] at h₁ h₂; rw [← eq_iff_eq_val]; exact le_antisymm h₁ h₂
   le_total a b := by simp only [← le_iff_le]; exact le_total _ _
