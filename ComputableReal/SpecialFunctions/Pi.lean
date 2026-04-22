@@ -1,5 +1,5 @@
 import ComputableReal.SpecialFunctions.Sqrt
-import Mathlib.Data.Real.Pi.Bounds
+import Mathlib.Analysis.Real.Pi.Bounds
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 
 open scoped QInterval

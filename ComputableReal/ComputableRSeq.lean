@@ -1,6 +1,6 @@
 import Mathlib.Algebra.Order.Interval.Basic
 import Mathlib.Data.Real.Archimedean
-import Mathlib.Data.Sign
+import Mathlib.Data.Sign.Basic
 import Mathlib.Tactic.Rify
 
 import ComputableReal.aux_lemmas
@@ -44,9 +44,9 @@ theorem mul_pair_lb_is_lb {x y : ℚInterval} : ∀ xv ∈ x, ∀ yv ∈ y,
   intro xv ⟨hxl,hxu⟩ yv ⟨hyl,hyu⟩
   dsimp [mul_pair]
   push_cast
-  rcases le_or_lt xv 0 with hxn|hxp
-  all_goals rcases le_or_lt (y.fst:ℝ) 0 with hyln|hylp
-  all_goals rcases le_or_lt (y.snd:ℝ) 0 with hyun|hyup
+  rcases le_or_gt xv 0 with hxn|hxp
+  all_goals rcases le_or_gt (y.fst:ℝ) 0 with hyln|hylp
+  all_goals rcases le_or_gt (y.snd:ℝ) 0 with hyun|hyup
   all_goals try linarith
   all_goals repeat rw [min_def]
   all_goals split_ifs with h₁ h₂ h₃ h₃ h₂ h₃ h₃
@@ -57,9 +57,9 @@ theorem mul_pair_ub_is_ub {x y : ℚInterval} : ∀ xv ∈ x, ∀ yv ∈ y,
   intro xv ⟨hxl,hxu⟩ yv ⟨hyl,hyu⟩
   dsimp [mul_pair]
   push_cast
-  rcases le_or_lt xv 0 with hxn|hxp
-  all_goals rcases le_or_lt (y.1.1:ℝ) 0 with hyln|hylp
-  all_goals rcases le_or_lt (y.1.2:ℝ) 0 with hyun|hyup
+  rcases le_or_gt xv 0 with hxn|hxp
+  all_goals rcases le_or_gt (y.1.1:ℝ) 0 with hyln|hylp
+  all_goals rcases le_or_gt (y.1.2:ℝ) 0 with hyun|hyup
   all_goals try linarith
   all_goals repeat rw [max_def]
   all_goals split_ifs with h₁ h₂ h₃ h₃ h₂ h₃ h₃
@@ -575,7 +575,7 @@ noncomputable def sign_witness_term (x : ComputableℝSeq) (hnz : x.val ≠ 0) :
 theorem sign_witness_term_prop (x : ComputableℝSeq) (n : ℕ) (hnz : x.val ≠ 0)
     (hub : ¬(x.ub).val n < 0) (hlb: ¬(x.lb).val n > 0) :
     n + Nat.succ 0 ≤ (x.sign_witness_term hnz).val.1 := by
-  push_neg at hub hlb
+  push Not at hub hlb
   obtain ⟨⟨k, q⟩, ⟨h₁, h₂, h₃⟩⟩ := x.sign_witness_term hnz
   by_contra hn
   replace h₃ := h₃ n (by linarith)
@@ -802,7 +802,7 @@ theorem lb_inv_converges {x : ComputableℝSeq} (hnz : x.val ≠ 0) :
   rw [Real.cauchy_inv, Real.cauchy, Real.cauchy, Real.mk, val_eq_mk_ub, Real.mk,
     CauSeq.Completion.inv_mk (neg_LimZero_ub_of_val hnz), CauSeq.Completion.mk_eq, lb_inv]
   split_ifs with h
-  · rfl
+  · rw [sub_self]; exact CauSeq.zero_limZero
   · exact fun _ hε ↦
       have hxv : x.val < 0 := by
         rw [is_pos_iff] at h
@@ -832,7 +832,7 @@ theorem ub_inv_converges {x : ComputableℝSeq} (hnz : x.val ≠ 0) :
       ⟨i, fun j hj ↦
         have : ¬x.lb j ≤ 0 := by linarith [H _ hj]
         by simp [this, hε]⟩
-  · rfl
+  · rw [sub_self]; exact CauSeq.zero_limZero
 
 /-- When applied to a `dropTilSigned`, `ub_inv` is converges to x⁻¹.
 TODO: version without hnz hypothesis. -/
@@ -844,12 +844,13 @@ theorem ub_inv_signed_converges {x : ComputableℝSeq} (hnz : x.val ≠ 0) :
  nonzero, then we can prove that at some point we learn the sign, and so can start giving actual
  upper and lower bounds. There is a separate `inv` that uses `sign` to construct the proof of
  nonzeroness by searching along the sequence (but isn't guaranteed to terminate). -/
-def safe_inv (x : ComputableℝSeq) (hnz : x.val ≠ 0) : ComputableℝSeq :=
+noncomputable def safe_inv (x : ComputableℝSeq) (hnz : x.val ≠ 0) : ComputableℝSeq :=
   --TODO currently this passes the sequence to lb_inv and ub_inv separately, which means we evaluate
   --things twice (and this can lead to exponential slowdown for long series of inverses). This should
   --be bundled
   let signed := x.dropTilSigned hnz
   let hnz' := val_dropTilSigned hnz ▸ hnz
+  -- x.val⁻¹ use `Real.instInv` here, which is noncomputable.
   mk (x := x.val⁻¹)
   (lub := fun n ↦ ⟨⟨(signed.lb_inv hnz') n, (signed.ub_inv hnz') n⟩,
     Rat.cast_le.mp ((lb_inv_correct hnz n).trans (ub_inv_correct hnz n))⟩)
@@ -870,14 +871,14 @@ theorem val_safe_inv_ne_zero {x : ComputableℝSeq} (hnz : x.val ≠ 0) : (x.saf
 /-- Subtype of sequences with nonzero values. These admit a (terminating) inverse function. -/
 def nzSeq := {x : ComputableℝSeq // x.val ≠ 0}
 
-def inv_nz : nzSeq → nzSeq :=
+noncomputable def inv_nz : nzSeq → nzSeq :=
   fun x ↦ ⟨x.val.safe_inv x.prop, val_safe_inv_ne_zero _⟩
 
 @[simp]
 theorem val_inv_nz (x : nzSeq) : (inv_nz x).val.val = x.val.val⁻¹ :=
   val_safe_inv _
 
-instance instNzInv : Inv nzSeq :=
+noncomputable instance instNzInv : Inv nzSeq :=
   ⟨inv_nz⟩
 
 end safe_inv
@@ -887,16 +888,16 @@ section inv
 /-- Inverse of a computable real. Will terminate if the argument is nonzero, or if it is zero and the
   upper and lower bounds become exactly zero at some point. See `ComputableℝSeq.sign`. If you want
   to only call this in a way guaranteed to terminate, use `ComputableℝSeq.safe_inv`. -/
-def inv : ComputableℝSeq → ComputableℝSeq :=
+noncomputable def inv : ComputableℝSeq → ComputableℝSeq :=
   fun x ↦ match h : x.sign with
   | SignType.pos => x.safe_inv (x.sign_pos_iff.1 h).ne'
   | SignType.neg => x.safe_inv (x.sign_neg_iff.1 h).ne
   | SignType.zero => 0
 
-instance instInv : Inv ComputableℝSeq :=
+noncomputable instance instInv : Inv ComputableℝSeq :=
   ⟨inv⟩
 
-instance instDiv : Div ComputableℝSeq :=
+noncomputable instance instDiv : Div ComputableℝSeq :=
   ⟨fun x y ↦ x * y⁻¹⟩
 
 theorem inv_def (x : ComputableℝSeq) : x⁻¹ = x.inv :=
@@ -941,7 +942,7 @@ theorem add_comm (x y: ComputableℝSeq) : x + y = y + x := by
 
 theorem mul_comm (x y : ComputableℝSeq) : x * y = y * x := by
   ext n
-  <;> simp only [lb_mul, ub_mul, mul_lb, mul_ub]
+  <;> simp only [lb_mul, ub_mul]
   · repeat rw [_root_.mul_comm (lb x)]
     repeat rw [_root_.mul_comm (ub x)]
     dsimp
@@ -983,13 +984,13 @@ theorem right_distrib (x y z : ComputableℝSeq) : (x + y) * z = x * z + y * z :
 theorem neg_mul (x y : ComputableℝSeq) : -x * y = -(x * y) := by
   ext
   · rw [lb_neg, lb_mul, ub_mul]
-    simp only [lb_neg, ub_neg, CauSeq.coe_inf, CauSeq.coe_mul, CauSeq.coe_neg, neg_mul,
+    simp only [lb_neg, ub_neg, CauSeq.coe_inf, CauSeq.coe_mul, CauSeq.coe_neg,
       Pi.inf_apply, Pi.neg_apply, Pi.mul_apply, CauSeq.neg_apply, CauSeq.coe_sup, Pi.sup_apply, neg_sup]
     nth_rewrite 2 [inf_comm]
     nth_rewrite 3 [inf_comm]
     ring_nf
   · rw [ub_neg, lb_mul, ub_mul]
-    simp only [lb_neg, ub_neg, CauSeq.coe_inf, CauSeq.coe_mul, CauSeq.coe_neg, neg_mul,
+    simp only [lb_neg, ub_neg, CauSeq.coe_inf, CauSeq.coe_mul, CauSeq.coe_neg,
       Pi.inf_apply, Pi.neg_apply, Pi.mul_apply, CauSeq.neg_apply, CauSeq.coe_sup, Pi.sup_apply, neg_inf]
     nth_rewrite 2 [sup_comm]
     nth_rewrite 3 [sup_comm]
@@ -1028,7 +1029,7 @@ class CompSeqClass (G : Type u) extends
   AddCommMonoid G, CommMagma G, MulZeroOneClass G, Inv G, Div G,
   HasDistribNeg G, SubtractionCommMonoid G, NatCast G, IntCast G, RatCast G
 
-instance instSeqCompSeqClass : CompSeqClass ComputableℝSeq := by
+noncomputable instance instSeqCompSeqClass : CompSeqClass ComputableℝSeq := by
   refine' {
             natCast := fun n => n
             intCast := fun z => z
@@ -1062,8 +1063,8 @@ instance instSeqCompSeqClass : CompSeqClass ComputableℝSeq := by
     | rfl
     | ext
       all_goals
-        try simp only [natCast_ub, natCast_lb, Nat.cast_add, Nat.cast_one, CauSeq.add_apply, CauSeq.one_apply,
-           CauSeq.zero_apply, CauSeq.neg_apply, lb_add, ub_add, one_ub, one_lb, zero_ub, zero_lb, ub_neg,
+        try simp only [CauSeq.add_apply,
+           CauSeq.zero_apply, CauSeq.neg_apply, lb_add, ub_add, zero_ub, zero_lb, ub_neg,
            lb_neg, neg_add_rev, neg_neg, zero_add, add_zero]
         try ring_nf
         try rfl

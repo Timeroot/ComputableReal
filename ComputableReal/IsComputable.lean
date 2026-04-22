@@ -13,15 +13,18 @@ namespace IsComputable
 
 /-- Turns one `IsComputable` into another one, given a proof that they're equal. This is directly
 analogous to `decidable_of_iff`, as a way to avoid `Eq.rec` on data-carrying instances. -/
+@[reducible]
 def lift_eq {x y : ℝ} (h : x = y) :
     IsComputable x → IsComputable y :=
   fun ⟨sx, hsx⟩ ↦ ⟨sx, h ▸ hsx⟩
 
+@[reducible]
 def lift (fr : ℝ → ℝ) (fs : ComputableℝSeq → ComputableℝSeq)
     (h : ∀ a, (fs a).val = fr a.val) :
     IsComputable x → IsComputable (fr x) :=
   fun ⟨sx, hsx⟩ ↦ ⟨fs sx, hsx ▸ h sx⟩
 
+@[reducible]
 def lift₂ (fr : ℝ → ℝ → ℝ) (fs : ComputableℝSeq → ComputableℝSeq → ComputableℝSeq)
     (h : ∀a b, (fs a b).val = fr a.val b.val) :
     IsComputable x → IsComputable y → IsComputable (fr x y) :=
@@ -55,7 +58,7 @@ instance instComputableOfNatAtLeastTwo : (n : ℕ) → [n.AtLeastTwo] → IsComp
 instance instComputableNeg (x : ℝ) [hx : IsComputable x] : IsComputable (-x) :=
   lift _ (- ·) ComputableℝSeq.val_neg hx
 
-instance instComputableInv (x : ℝ) [hx : IsComputable x] : IsComputable (x⁻¹) :=
+noncomputable instance instComputableInv (x : ℝ) [hx : IsComputable x] : IsComputable (x⁻¹) :=
   lift _ (·⁻¹) ComputableℝSeq.val_inv hx
 
 instance instComputableAdd [hx : IsComputable x] [hy : IsComputable y] : IsComputable (x + y) :=
@@ -67,7 +70,7 @@ instance instComputableSub [hx : IsComputable x] [hy : IsComputable y] : IsCompu
 instance instComputableMul [hx : IsComputable x] [hy : IsComputable y] : IsComputable (x * y) :=
   lift₂ _ (· * ·) ComputableℝSeq.val_mul hx hy
 
-instance instComputableDiv [hx : IsComputable x] [hy : IsComputable y] : IsComputable (x / y) :=
+noncomputable instance instComputableDiv [hx : IsComputable x] [hy : IsComputable y] : IsComputable (x / y) :=
   lift₂ _ (· / ·) ComputableℝSeq.val_div hx hy
 
 instance instComputableNatPow [hx : IsComputable x] (n : ℕ) : IsComputable (x ^ n) := by
@@ -82,14 +85,14 @@ instance instComputableNatPow [hx : IsComputable x] (n : ℕ) : IsComputable (x 
   · rw [pow_succ]
     infer_instance
 
-instance instComputableZPow [hx : IsComputable x] (z : ℤ) : IsComputable (x ^ z) := by
+noncomputable instance instComputableZPow [hx : IsComputable x] (z : ℤ) : IsComputable (x ^ z) := by
   cases z
-  · rw [Int.ofNat_eq_coe, zpow_natCast]
+  · rw [Int.ofNat_eq_natCast, zpow_natCast]
     infer_instance
   · simp only [zpow_negSucc]
     infer_instance
 
-instance instComputableNSMul [hx : IsComputable x] (n : ℕ) : IsComputable (n • x) :=
+noncomputable instance instComputableNSMul [hx : IsComputable x] (n : ℕ) : IsComputable (n • x) :=
   lift _ (n • ·) (by
     --TODO move to a ComputableℝSeq lemma
     intro a
@@ -194,7 +197,7 @@ theorem Real_mk_of_TendstoLocallyUniformly' (fImpl : ℕ → ℚ → ℚ) (f : �
 
   calc |↑(fImpl j (x j)) - f (Real.mk ⟨x, hx⟩)| =
     |(↑(fImpl j (x j)) - f ↑(x j)) + (f ↑(x j) - f (Real.mk ⟨x, hx⟩))| := by congr; ring_nf
-    _ ≤ |(↑(fImpl j (x j)) - f ↑(x j))| + |(f ↑(x j) - f (Real.mk ⟨x, hx⟩))| := abs_add _ _
+    _ ≤ |(↑(fImpl j (x j)) - f ↑(x j))| + |(f ↑(x j) - f (Real.mk ⟨x, hx⟩))| := abs_add_le _ _
     _ < ε := by rw [abs_sub_comm]; linarith
 
 open scoped QInterval
