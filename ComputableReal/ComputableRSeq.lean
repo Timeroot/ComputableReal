@@ -850,6 +850,7 @@ noncomputable def safe_inv (x : ComputableℝSeq) (hnz : x.val ≠ 0) : Computab
   --be bundled
   let signed := x.dropTilSigned hnz
   let hnz' := val_dropTilSigned hnz ▸ hnz
+  -- x.val⁻¹ use `Real.instInv` here, which is noncomputable.
   mk (x := x.val⁻¹)
   (lub := fun n ↦ ⟨⟨(signed.lb_inv hnz') n, (signed.ub_inv hnz') n⟩,
     Rat.cast_le.mp ((lb_inv_correct hnz n).trans (ub_inv_correct hnz n))⟩)
