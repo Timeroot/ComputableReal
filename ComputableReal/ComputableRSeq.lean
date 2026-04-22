@@ -983,13 +983,13 @@ theorem right_distrib (x y z : ComputableℝSeq) : (x + y) * z = x * z + y * z :
 theorem neg_mul (x y : ComputableℝSeq) : -x * y = -(x * y) := by
   ext
   · rw [lb_neg, lb_mul, ub_mul]
-    simp only [lb_neg, ub_neg, CauSeq.coe_inf, CauSeq.coe_mul, CauSeq.coe_neg, neg_mul,
+    simp only [lb_neg, ub_neg, CauSeq.coe_inf, CauSeq.coe_mul, CauSeq.coe_neg,
       Pi.inf_apply, Pi.neg_apply, Pi.mul_apply, CauSeq.neg_apply, CauSeq.coe_sup, Pi.sup_apply, neg_sup]
     nth_rewrite 2 [inf_comm]
     nth_rewrite 3 [inf_comm]
     ring_nf
   · rw [ub_neg, lb_mul, ub_mul]
-    simp only [lb_neg, ub_neg, CauSeq.coe_inf, CauSeq.coe_mul, CauSeq.coe_neg, neg_mul,
+    simp only [lb_neg, ub_neg, CauSeq.coe_inf, CauSeq.coe_mul, CauSeq.coe_neg,
       Pi.inf_apply, Pi.neg_apply, Pi.mul_apply, CauSeq.neg_apply, CauSeq.coe_sup, Pi.sup_apply, neg_inf]
     nth_rewrite 2 [sup_comm]
     nth_rewrite 3 [sup_comm]
@@ -1062,8 +1062,8 @@ noncomputable instance instSeqCompSeqClass : CompSeqClass ComputableℝSeq := by
     | rfl
     | ext
       all_goals
-        try simp only [natCast_ub, natCast_lb, Nat.cast_add, Nat.cast_one, CauSeq.add_apply, CauSeq.one_apply,
-           CauSeq.zero_apply, CauSeq.neg_apply, lb_add, ub_add, one_ub, one_lb, zero_ub, zero_lb, ub_neg,
+        try simp only [CauSeq.add_apply,
+           CauSeq.zero_apply, CauSeq.neg_apply, lb_add, ub_add, zero_ub, zero_lb, ub_neg,
            lb_neg, neg_add_rev, neg_neg, zero_add, add_zero]
         try ring_nf
         try rfl
