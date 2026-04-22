@@ -330,13 +330,13 @@ instance instIsOrderedCancelAddMonoid : IsOrderedCancelAddMonoid Computableℝ w
 noncomputable instance instPosMulStrictMono : PosMulStrictMono Computableℝ where
   mul_lt_mul_of_pos_left := by
     intro a ha b c hbc
-    simp only [← lt_iff_lt, val_mul] at *
+    simp only [← lt_iff_lt, val_mul, val_zero] at *
     exact mul_lt_mul_of_pos_left hbc ha
 
 noncomputable instance instMulPosStrictMono : MulPosStrictMono Computableℝ where
   mul_lt_mul_of_pos_right := by
     intro c hc a b hab
-    simp only [← lt_iff_lt, val_mul] at *
+    simp only [← lt_iff_lt, val_mul, val_zero] at *
     exact mul_lt_mul_of_pos_right hab hc
 
 instance instIsStrictOrderedRing : IsStrictOrderedRing Computableℝ where
