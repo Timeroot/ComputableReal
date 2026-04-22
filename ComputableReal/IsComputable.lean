@@ -58,7 +58,7 @@ instance instComputableOfNatAtLeastTwo : (n : ℕ) → [n.AtLeastTwo] → IsComp
 instance instComputableNeg (x : ℝ) [hx : IsComputable x] : IsComputable (-x) :=
   lift _ (- ·) ComputableℝSeq.val_neg hx
 
-instance instComputableInv (x : ℝ) [hx : IsComputable x] : IsComputable (x⁻¹) :=
+noncomputable instance instComputableInv (x : ℝ) [hx : IsComputable x] : IsComputable (x⁻¹) :=
   lift _ (·⁻¹) ComputableℝSeq.val_inv hx
 
 instance instComputableAdd [hx : IsComputable x] [hy : IsComputable y] : IsComputable (x + y) :=
@@ -70,7 +70,7 @@ instance instComputableSub [hx : IsComputable x] [hy : IsComputable y] : IsCompu
 instance instComputableMul [hx : IsComputable x] [hy : IsComputable y] : IsComputable (x * y) :=
   lift₂ _ (· * ·) ComputableℝSeq.val_mul hx hy
 
-instance instComputableDiv [hx : IsComputable x] [hy : IsComputable y] : IsComputable (x / y) :=
+noncomputable instance instComputableDiv [hx : IsComputable x] [hy : IsComputable y] : IsComputable (x / y) :=
   lift₂ _ (· / ·) ComputableℝSeq.val_div hx hy
 
 instance instComputableNatPow [hx : IsComputable x] (n : ℕ) : IsComputable (x ^ n) := by
@@ -85,14 +85,14 @@ instance instComputableNatPow [hx : IsComputable x] (n : ℕ) : IsComputable (x 
   · rw [pow_succ]
     infer_instance
 
-instance instComputableZPow [hx : IsComputable x] (z : ℤ) : IsComputable (x ^ z) := by
+noncomputable instance instComputableZPow [hx : IsComputable x] (z : ℤ) : IsComputable (x ^ z) := by
   cases z
   · rw [Int.ofNat_eq_natCast, zpow_natCast]
     infer_instance
   · simp only [zpow_negSucc]
     infer_instance
 
-instance instComputableNSMul [hx : IsComputable x] (n : ℕ) : IsComputable (n • x) :=
+noncomputable instance instComputableNSMul [hx : IsComputable x] (n : ℕ) : IsComputable (n • x) :=
   lift _ (n • ·) (by
     --TODO move to a ComputableℝSeq lemma
     intro a

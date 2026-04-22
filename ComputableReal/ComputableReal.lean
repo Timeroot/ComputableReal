@@ -308,7 +308,7 @@ instance instDecidableLE : DecidableRel (fun (x y : Computableℝ) ↦ x ≤ y) 
     infer_instance
 
 --TODO: add a faster `min` and `max` that don't require sign computation.
-noncomputable instance instLinearOrder : LinearOrder Computableℝ where
+instance instLinearOrder : LinearOrder Computableℝ where
   le_refl x := by rw [← le_iff_le]
   le_trans a b c h₁ h₂ := by rw [← le_iff_le] at *; exact le_trans h₁ h₂
   lt_iff_le_not_ge a b := by
