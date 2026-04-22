@@ -44,9 +44,9 @@ theorem mul_pair_lb_is_lb {x y : ℚInterval} : ∀ xv ∈ x, ∀ yv ∈ y,
   intro xv ⟨hxl,hxu⟩ yv ⟨hyl,hyu⟩
   dsimp [mul_pair]
   push_cast
-  rcases le_or_lt xv 0 with hxn|hxp
-  all_goals rcases le_or_lt (y.fst:ℝ) 0 with hyln|hylp
-  all_goals rcases le_or_lt (y.snd:ℝ) 0 with hyun|hyup
+  rcases le_or_gt xv 0 with hxn|hxp
+  all_goals rcases le_or_gt (y.fst:ℝ) 0 with hyln|hylp
+  all_goals rcases le_or_gt (y.snd:ℝ) 0 with hyun|hyup
   all_goals try linarith
   all_goals repeat rw [min_def]
   all_goals split_ifs with h₁ h₂ h₃ h₃ h₂ h₃ h₃
@@ -57,9 +57,9 @@ theorem mul_pair_ub_is_ub {x y : ℚInterval} : ∀ xv ∈ x, ∀ yv ∈ y,
   intro xv ⟨hxl,hxu⟩ yv ⟨hyl,hyu⟩
   dsimp [mul_pair]
   push_cast
-  rcases le_or_lt xv 0 with hxn|hxp
-  all_goals rcases le_or_lt (y.1.1:ℝ) 0 with hyln|hylp
-  all_goals rcases le_or_lt (y.1.2:ℝ) 0 with hyun|hyup
+  rcases le_or_gt xv 0 with hxn|hxp
+  all_goals rcases le_or_gt (y.1.1:ℝ) 0 with hyln|hylp
+  all_goals rcases le_or_gt (y.1.2:ℝ) 0 with hyun|hyup
   all_goals try linarith
   all_goals repeat rw [max_def]
   all_goals split_ifs with h₁ h₂ h₃ h₃ h₂ h₃ h₃
@@ -802,7 +802,7 @@ theorem lb_inv_converges {x : ComputableℝSeq} (hnz : x.val ≠ 0) :
   rw [Real.cauchy_inv, Real.cauchy, Real.cauchy, Real.mk, val_eq_mk_ub, Real.mk,
     CauSeq.Completion.inv_mk (neg_LimZero_ub_of_val hnz), CauSeq.Completion.mk_eq, lb_inv]
   split_ifs with h
-  · rfl
+  · rw [sub_self]; exact CauSeq.zero_limZero
   · exact fun _ hε ↦
       have hxv : x.val < 0 := by
         rw [is_pos_iff] at h
@@ -832,7 +832,7 @@ theorem ub_inv_converges {x : ComputableℝSeq} (hnz : x.val ≠ 0) :
       ⟨i, fun j hj ↦
         have : ¬x.lb j ≤ 0 := by linarith [H _ hj]
         by simp [this, hε]⟩
-  · rfl
+  · rw [sub_self]; exact CauSeq.zero_limZero
 
 /-- When applied to a `dropTilSigned`, `ub_inv` is converges to x⁻¹.
 TODO: version without hnz hypothesis. -/
@@ -844,7 +844,7 @@ theorem ub_inv_signed_converges {x : ComputableℝSeq} (hnz : x.val ≠ 0) :
  nonzero, then we can prove that at some point we learn the sign, and so can start giving actual
  upper and lower bounds. There is a separate `inv` that uses `sign` to construct the proof of
  nonzeroness by searching along the sequence (but isn't guaranteed to terminate). -/
-def safe_inv (x : ComputableℝSeq) (hnz : x.val ≠ 0) : ComputableℝSeq :=
+noncomputable def safe_inv (x : ComputableℝSeq) (hnz : x.val ≠ 0) : ComputableℝSeq :=
   --TODO currently this passes the sequence to lb_inv and ub_inv separately, which means we evaluate
   --things twice (and this can lead to exponential slowdown for long series of inverses). This should
   --be bundled
@@ -870,14 +870,14 @@ theorem val_safe_inv_ne_zero {x : ComputableℝSeq} (hnz : x.val ≠ 0) : (x.saf
 /-- Subtype of sequences with nonzero values. These admit a (terminating) inverse function. -/
 def nzSeq := {x : ComputableℝSeq // x.val ≠ 0}
 
-def inv_nz : nzSeq → nzSeq :=
+noncomputable def inv_nz : nzSeq → nzSeq :=
   fun x ↦ ⟨x.val.safe_inv x.prop, val_safe_inv_ne_zero _⟩
 
 @[simp]
 theorem val_inv_nz (x : nzSeq) : (inv_nz x).val.val = x.val.val⁻¹ :=
   val_safe_inv _
 
-instance instNzInv : Inv nzSeq :=
+noncomputable instance instNzInv : Inv nzSeq :=
   ⟨inv_nz⟩
 
 end safe_inv
@@ -887,16 +887,16 @@ section inv
 /-- Inverse of a computable real. Will terminate if the argument is nonzero, or if it is zero and the
   upper and lower bounds become exactly zero at some point. See `ComputableℝSeq.sign`. If you want
   to only call this in a way guaranteed to terminate, use `ComputableℝSeq.safe_inv`. -/
-def inv : ComputableℝSeq → ComputableℝSeq :=
+noncomputable def inv : ComputableℝSeq → ComputableℝSeq :=
   fun x ↦ match h : x.sign with
   | SignType.pos => x.safe_inv (x.sign_pos_iff.1 h).ne'
   | SignType.neg => x.safe_inv (x.sign_neg_iff.1 h).ne
   | SignType.zero => 0
 
-instance instInv : Inv ComputableℝSeq :=
+noncomputable instance instInv : Inv ComputableℝSeq :=
   ⟨inv⟩
 
-instance instDiv : Div ComputableℝSeq :=
+noncomputable instance instDiv : Div ComputableℝSeq :=
   ⟨fun x y ↦ x * y⁻¹⟩
 
 theorem inv_def (x : ComputableℝSeq) : x⁻¹ = x.inv :=
@@ -1028,7 +1028,7 @@ class CompSeqClass (G : Type u) extends
   AddCommMonoid G, CommMagma G, MulZeroOneClass G, Inv G, Div G,
   HasDistribNeg G, SubtractionCommMonoid G, NatCast G, IntCast G, RatCast G
 
-instance instSeqCompSeqClass : CompSeqClass ComputableℝSeq := by
+noncomputable instance instSeqCompSeqClass : CompSeqClass ComputableℝSeq := by
   refine' {
             natCast := fun n => n
             intCast := fun z => z

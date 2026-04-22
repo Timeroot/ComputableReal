@@ -152,6 +152,12 @@ instance instCommRing : CommRing Computableℝ := by
             npow := npowRec --todo faster instances
             nsmul := nsmulRec
             zsmul := zsmulRec
+            natCast_succ := fun n => by
+              rw [← eq_iff_eq_val]
+              simp only [val_mk_eq_val, val_add, val_one, ComputableℝSeq.val_natCast]
+              push_cast; ring
+            sub_eq_add_neg := fun a b => by
+              rw [← eq_iff_eq_val, val_sub, val_add, val_neg]; ring
             .. }
   all_goals
     intros
@@ -159,7 +165,7 @@ instance instCommRing : CommRing Computableℝ := by
     | rfl
     | rw [← eq_iff_eq_val]
       simp
-      try ring_nf!
+      try ring
 
 @[simp]
 theorem val_natpow (x : Computableℝ) (n : ℕ): (x ^ n).val = x.val ^ n := by
@@ -191,14 +197,14 @@ private def nz_quot_equiv := Equiv.subtypeQuotientEquivQuotientSubtype
     (fun _ _ ↦ Iff.rfl)
 
 /-- Auxiliary inverse definition that operates on the nonzero Computableℝ values. -/
-def safe_inv' : { x : Computableℝ // x ≠ 0 } → { x : Computableℝ // x ≠ 0 } :=
+noncomputable def safe_inv' : { x : Computableℝ // x ≠ 0 } → { x : Computableℝ // x ≠ 0 } :=
   fun v ↦ nz_quot_equiv.invFun <| Quotient.map _ fun x y h₁ ↦ by
     change (ComputableℝSeq.inv_nz x).val.val = (ComputableℝSeq.inv_nz y).val.val
     rw [ComputableℝSeq.val_inv_nz x, ComputableℝSeq.val_inv_nz y, h₁]
   (nz_quot_equiv.toFun v)
 
 /-- Inverse of a nonzero Computableℝ, safe (terminating) as long as x is nonzero. -/
-irreducible_def safe_inv (hnz : x ≠ 0) : Computableℝ := safe_inv' ⟨x, hnz⟩
+noncomputable irreducible_def safe_inv (hnz : x ≠ 0) : Computableℝ := safe_inv' ⟨x, hnz⟩
 
 @[simp]
 theorem safe_inv_val (hnz : x ≠ 0) : (x.safe_inv hnz).val = x.val⁻¹ := by
@@ -219,7 +225,7 @@ end safe_inv
 
 section field
 
-instance instComputableInv : Inv Computableℝ :=
+noncomputable instance instComputableInv : Inv Computableℝ :=
   ⟨mapℝ' (·⁻¹) ⟨(·⁻¹), ComputableℝSeq.val_inv⟩⟩
 
 @[simp]
@@ -230,7 +236,7 @@ theorem inv_val : (x⁻¹).val = (x.val)⁻¹ := by
 
 example : True := ⟨⟩
 
-instance instField : Field Computableℝ := { instCommRing with
+noncomputable instance instField : Field Computableℝ := { instCommRing with
   qsmul := _
   nnqsmul := _
   exists_pair_ne := ⟨0, 1, by
@@ -302,26 +308,39 @@ instance instDecidableLE : DecidableRel (fun (x y : Computableℝ) ↦ x ≤ y) 
     infer_instance
 
 --TODO: add a faster `min` and `max` that don't require sign computation.
-instance instLinearOrderedField : LinearOrderedField Computableℝ := by
-  refine' { instField, instLT, instLE with
-      decidableLE := inferInstance
-      le_refl := _
-      le_trans := _
-      le_antisymm := _
-      add_le_add_left := _
-      zero_le_one := _
-      mul_pos := _
-      le_total := _
-      lt_iff_le_not_le := _
-    }
-  all_goals
-    intros
-    simp only [← le_iff_le, ← lt_iff_lt, ← eq_iff_eq_val, val_add, val_mul, val_zero, val_one] at *
-    first
-    | linarith (config := {splitNe := true})
-    | apply mul_pos ‹_› ‹_›
-    | apply le_total
-    | apply lt_iff_le_not_le
+noncomputable instance instLinearOrder : LinearOrder Computableℝ where
+  le_refl x := by rw [← le_iff_le]
+  le_trans a b c h₁ h₂ := by rw [← le_iff_le] at *; exact le_trans h₁ h₂
+  lt_iff_le_not_ge a b := by
+    simp only [← lt_iff_lt, ← le_iff_le]
+    exact ⟨fun h => ⟨le_of_lt h, not_le_of_lt h⟩, fun ⟨h₁, h₂⟩ => lt_of_le_not_le h₁ h₂⟩
+  le_antisymm a b h₁ h₂ := by
+    rw [← le_iff_le] at h₁ h₂; rw [← eq_iff_eq_val]; exact le_antisymm h₁ h₂
+  le_total a b := by simp only [← le_iff_le]; exact le_total _ _
+  toDecidableLE := instDecidableLE
+
+instance instIsOrderedAddMonoid : IsOrderedAddMonoid Computableℝ where
+  add_le_add_left a b h c := by
+    simp only [← le_iff_le, val_add] at *; linarith
+
+instance instIsOrderedCancelAddMonoid : IsOrderedCancelAddMonoid Computableℝ where
+  le_of_add_le_add_left a b c h := by
+    simp only [← le_iff_le, val_add] at *; linarith
+
+noncomputable instance instPosMulStrictMono : PosMulStrictMono Computableℝ where
+  mul_lt_mul_of_pos_left := by
+    intro a ha b c hbc
+    simp only [← lt_iff_lt, val_mul] at *
+    exact mul_lt_mul_of_pos_left hbc ha
+
+noncomputable instance instMulPosStrictMono : MulPosStrictMono Computableℝ where
+  mul_lt_mul_of_pos_right := by
+    intro c hc a b hab
+    simp only [← lt_iff_lt, val_mul] at *
+    exact mul_lt_mul_of_pos_right hab hc
+
+instance instIsStrictOrderedRing : IsStrictOrderedRing Computableℝ where
+  zero_le_one := by rw [← le_iff_le, val_zero, val_one]; exact zero_le_one
 
 end ordered
 
